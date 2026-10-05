@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.fuin.sokar</groupId>
+        <artifactId>sokar-buildtools</artifactId>
+        <version>0.4.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>sokar-machines</artifactId>
+    <name>Sokar Machines</name>
+    <description>Sokar - Renting a test machine and talking to it (BUILD)</description>
+
+    <properties>
+        <!-- Published: the agent repositories rent the same machines from their own CI, and a
+             copy of this is what let four copies of it disagree. -->
+        <maven.deploy.skip>false</maven.deploy.skip>
+        <skipPublishing>false</skipPublishing>
+
+        <!-- What a snapshot a CI leg boots from is made of, filtered into machines.properties for
+             Snapshots. Moved by the release tooling's update of a named pin, never by hand: the
+             machines workflow asks upstream every day and opens one pull request, one commit per pin that has a
+             release at least three days old, and a merged one rebuilds the snapshots. -->
+        <machines.graalvm.version>25.4.4.1.1</machines.graalvm.version>
+        <machines.graalvm.url>https://github.com/graalvm/graalvm-ce-builds/releases/download/graal-25.4.4.1.1/graalvm-community-jdk-25i4-25.0.4.1.1_linux-x64_bin.tar.gz</machines.graalvm.url>
+        <machines.graalvm.sha256>05ccbbe783210b6886ff7b08fcd0b061c5dce4852b05db87284fc0e24abb08e2</machines.graalvm.sha256>
+        <!-- By digest, and tagged by name after the pull: a tag is rebuilt in place, so it has no
+             age to wait for and names different bytes from one day to the next. -->
+        <machines.image.ubuntu>docker.io/library/ubuntu:24.04</machines.image.ubuntu>
+        <machines.image.ubuntu.digest>sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3</machines.image.ubuntu.digest>
+        <machines.image.alpine>docker.io/library/alpine:3.20</machines.image.alpine>
+        <machines.image.alpine.digest>sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc</machines.image.alpine.digest>
+        <!-- The machine's image cache: a registry as a pull-through mirror of docker.io, so every account on a
+             leg pulls from the machine rather than from Docker Hub, and the snapshot ships it filled. -->
+        <machines.image.registry>docker.io/library/registry:2</machines.image.registry>
+        <machines.image.registry.digest>sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373</machines.image.registry.digest>
+
+        <sokar.release.min-age>3d</sokar.release.min-age>
+        <!-- GraalVM tags its builds graal-25.x beside the older jdk-25.0.x, and names the file after
+             neither, so the download address is read from the release with its digest. Line 25:
+             a JDK 26 build is a decision, not an update. -->
+        <sokar.release.pin.graalvm.label>GraalVM</sokar.release.pin.graalvm.label>
+        <sokar.release.pin.graalvm.property>machines.graalvm.version</sokar.release.pin.graalvm.property>
+        <sokar.release.pin.graalvm.upstream>github-releases https://api.github.com/repos/graalvm/graalvm-ce-builds/releases?per_page=100 graal-</sokar.release.pin.graalvm.upstream>
+        <sokar.release.pin.graalvm.channel>25</sokar.release.pin.graalvm.channel>
+        <sokar.release.pin.graalvm.digest>github-asset https://api.github.com/repos/graalvm/graalvm-ce-builds/releases/tags/graal-{version} graalvm-community-jdk-.*_linux-x64_bin\.tar\.gz</sokar.release.pin.graalvm.digest>
+        <sokar.release.pin.graalvm.sha256>machines.graalvm.sha256</sokar.release.pin.graalvm.sha256>
+        <sokar.release.pin.graalvm.url>machines.graalvm.url</sokar.release.pin.graalvm.url>
+        <sokar.release.pin.ubuntu-image.label>The ubuntu base image</sokar.release.pin.ubuntu-image.label>
+        <sokar.release.pin.ubuntu-image.property>machines.image.ubuntu.digest</sokar.release.pin.ubuntu-image.property>
+        <sokar.release.pin.ubuntu-image.upstream>docker-hub https://hub.docker.com/v2/repositories/library/ubuntu/tags/24.04</sokar.release.pin.ubuntu-image.upstream>
+        <sokar.release.pin.alpine-image.label>The alpine base image</sokar.release.pin.alpine-image.label>
+        <sokar.release.pin.alpine-image.property>machines.image.alpine.digest</sokar.release.pin.alpine-image.property>
+        <sokar.release.pin.alpine-image.upstream>docker-hub https://hub.docker.com/v2/repositories/library/alpine/tags/3.20</sokar.release.pin.alpine-image.upstream>
+        <sokar.release.pin.registry-image.label>The image cache's registry</sokar.release.pin.registry-image.label>
+        <sokar.release.pin.registry-image.property>machines.image.registry.digest</sokar.release.pin.registry-image.property>
+        <sokar.release.pin.registry-image.upstream>docker-hub https://hub.docker.com/v2/repositories/library/registry/tags/2</sokar.release.pin.registry-image.upstream>
+    </properties>
+
+    <dependencies>
+
+        <!-- JSON, rather than a second parser in this repository. The REST bodies here are the
+             same shape as varlink's and this one is already published. -->
+
+        <dependency>
+            <groupId>org.fuin.sokar</groupId>
+            <artifactId>sokar-json</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.hierynomus</groupId>
+            <artifactId>sshj</artifactId>
+            <version>${sshj.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+            </resource>
+            <!-- The musl installer is shell, copied as written: its ${...} are its own, not Maven's. -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>**/*.properties</exclude>
+                </excludes>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Automatic-Module-Name>org.fuin.sokar.machines</Automatic-Module-Name>
+                            <Main-Class>org.fuin.sokar.machines.Main</Main-Class>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

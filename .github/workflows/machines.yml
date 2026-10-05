@@ -1,0 +1,99 @@
+# The machines a CI leg boots from, kept current - for sokar's legs and every agent repository's,
+# which boot the same snapshots. The pins live in hetzner/pom.xml of this repository.
+name: Machines
+
+on:
+  # Daily: a release becomes old enough on a day of its own, not on the day it was published.
+  schedule:
+    - cron: '17 5 * * *'
+  # Merging the pull request it opens rebuilds the snapshots in Build: one run per push.
+  workflow_dispatch:
+
+# Never two at once: two refreshes would open the same pull request.
+concurrency:
+  group: ${{ github.workflow }}
+
+jobs:
+
+  # One pull request for every pin that has a release at least three days old (the pom's
+  # sokar.release.min-age), one commit per pin, and never an older release instead of a newer one that
+  # is too young.
+  refresh:
+    name: Ask upstream
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: The pinned GraalVM
+        uses: ./.github/actions/pinned-jdk
+
+      # From this commit's own build, so the tool that moves a pin is the one beside it.
+      - name: Build the release tooling
+        run: |
+          ./mvnw -B -q -s settings.xml -pl release -am install -DskipTests
+          ./mvnw -B -q -s settings.xml -pl release dependency:build-classpath \
+              -Dmdep.outputFile=target/cp.txt
+
+      # A pin whose question cannot be answered fails the job - "could not tell" is not "up to date" -
+      # after the others have been asked.
+      - name: One pull request for everything that moved
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -u
+          release() {
+              java -cp "release/target/classes:$(cat release/target/cp.txt)" \
+                  org.fuin.sokar.release.Main "$@"
+          }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # One branch, rebuilt from main on every run, one commit per moved pin: a merge rebuilds the
+          # snapshots once however many pins moved, and a person leaves a pin out by dropping its commit.
+          # No pin in this pom is spelled out from another, so the order does not matter here.
+          branch=machines/pins
+          git checkout -q -B "$branch" HEAD
+          failed=0
+          moved=""
+          answers=""
+          for pin in graalvm ubuntu-image alpine-image registry-image; do
+              if ! answer=$(release upstream-version --pom hetzner/pom.xml --pin "$pin"); then
+                  echo "::error::could not tell whether $pin has moved"
+                  failed=1
+                  continue
+              fi
+              echo "$answer"
+              update=$(printf '%s\n' "$answer" | sed -n 's/^update=//p')
+              upstream=$(printf '%s\n' "$answer" | sed -n 's/^upstream=//p')
+              if [ "$update" != yes ]; then
+                  continue
+              fi
+              # A pin that cannot move is skipped, and leaves the others to go ahead.
+              if ! release update "$upstream" --pin "$pin" --pom hetzner/pom.xml; then
+                  echo "::error::could not move $pin to $upstream"
+                  git checkout -q -- hetzner/pom.xml
+                  failed=1
+                  continue
+              fi
+              git commit -q -am "Pin $pin $upstream"
+              moved="$moved${moved:+, }$pin $upstream"
+              answers="$answers"$'\n'"$answer"
+          done
+          if [ -z "$moved" ]; then
+              echo "nothing moved"
+              exit "$failed"
+          fi
+          # Replaces what an open request held: it always says what upstream offers today.
+          git push -q --force origin "$branch"
+          title="Pin $moved"
+          body="$(printf 'The machines a CI leg boots from. Each pin that moved is one commit; merging rebuilds the snapshots once.\n\n```%s\n```' "$answers")"
+          if [ -n "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
+              gh pr edit "$branch" --title "$title" --body "$body"
+          else
+              gh pr create --base main --head "$branch" --title "$title" --body "$body"
+          fi
+          exit "$failed"

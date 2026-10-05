@@ -1,0 +1,28 @@
+# Checks that AGENTS.md's shared block carries the hash of its text. Of its own because the build ignores a change to
+# Markdown alone, which is exactly the change this is for, and it leases no machine.
+name: Shared rules
+
+on:
+  push:
+    branches: [main]
+    paths: ['AGENTS.md']
+  pull_request:
+    paths: ['AGENTS.md']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: The pinned GraalVM
+        uses: ./.github/actions/pinned-jdk
+
+      # check-shared is this repository's own, so the test that runs it against AGENTS.md is the check.
+      - name: The shared block against its hash
+        run: ./mvnw -B -s settings.xml -pl release -am test -Dtest=CheckSharedTest -Dsurefire.failIfNoSpecifiedTests=false

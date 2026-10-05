@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.fuin.sokar</groupId>
+        <artifactId>sokar-buildtools</artifactId>
+        <version>0.4.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>sokar-package-check</artifactId>
+    <name>Sokar Package Check</name>
+    <description>Sokar - Checking the .deb and the .rpm against each other and against a real install (BUILD)</description>
+
+    <properties>
+        <!-- Published: sokar runs this on its packages from its own build, so it resolves it from Central. -->
+        <maven.deploy.skip>false</maven.deploy.skip>
+        <skipPublishing>false</skipPublishing>
+
+        <!-- The images the packages are installed in, filtered into images.properties for Main. By digest and by
+             their registry's full name: a tag is rebuilt in place, and a short name is resolved by whichever
+             registries the machine's podman is configured to ask, so either checks against bytes nobody reviewed.
+             The ubuntu pin is moved by the release tooling, as the machines' are; the fedora one by hand, since
+             no upstream the release tooling reads answers for registry.fedoraproject.org.
+             A Fedora release is taken while it is maintained. Ubuntu 26.04, because the packages need podman 5
+             and 24.04 offers 4.9.3, so apt refuses to install them there. -->
+        <check.image.ubuntu>docker.io/library/ubuntu:26.04</check.image.ubuntu>
+        <check.image.ubuntu.digest>sha256:3595d7fc4286a33fad0fd853a4063e654287a9c3787437d7937c94ca3f7a804e</check.image.ubuntu.digest>
+        <check.image.fedora>registry.fedoraproject.org/fedora:44</check.image.fedora>
+        <check.image.fedora.digest>sha256:7011f51bd8089d345be42d41f0aa3190d258823528852a5e7ec976fe2fd20f53</check.image.fedora.digest>
+
+        <sokar.release.min-age>3d</sokar.release.min-age>
+        <sokar.release.pin.ubuntu-image.label>The ubuntu image the .deb is installed in</sokar.release.pin.ubuntu-image.label>
+        <sokar.release.pin.ubuntu-image.property>check.image.ubuntu.digest</sokar.release.pin.ubuntu-image.property>
+        <sokar.release.pin.ubuntu-image.upstream>docker-hub https://hub.docker.com/v2/repositories/library/ubuntu/tags/26.04</sokar.release.pin.ubuntu-image.upstream>
+    </properties>
+
+    <dependencies>
+
+        <!-- The bill is JSON, and this parser is already the repository's own. -->
+        <dependency>
+            <groupId>org.fuin.sokar</groupId>
+            <artifactId>sokar-json</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

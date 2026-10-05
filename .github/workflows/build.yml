@@ -1,0 +1,167 @@
+# What a change proves, and where.
+name: Build
+
+# A push that only touches documentation builds nothing.
+on:
+  push:
+    branches: ['**']
+    # A release: v<version>, built and published to Central's releases. Paths are not filtered for a tag.
+    tags: ['v*']
+    paths-ignore: ['**/*.md']
+  pull_request:
+    branches: ['**']
+    paths-ignore: ['**/*.md']
+  workflow_dispatch:
+
+# One run per branch. Runs queue rather than cancel each other, so a newer push cannot kill Publish
+# halfway through.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+
+  # Every push and every pull request, including from a fork.
+  build:
+    name: Build and unit tests
+    runs-on: ubuntu-latest
+    # Every job stops after a limit: GitHub's default is six hours, and a slow runner once took 14 times as long.
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: The pinned GraalVM
+        uses: ./.github/actions/pinned-jdk
+
+      # -s settings.xml so a developer's own ~/.m2/settings.xml cannot be what makes a build work here.
+      # It is also where sokar's snapshot libraries come from.
+      - name: Build and unit tests
+        run: ./mvnw -B verify -s settings.xml
+
+  # Only when a change that landed on main moved what a snapshot is made of - the pom changes for
+  # other reasons too. The legs of every Sokar repository boot the newest snapshot, so this is where
+  # they are rebuilt: here, where the pins are.
+  snapshots:
+    name: Snapshot - ${{ matrix.os }}
+    runs-on: ubuntu-latest
+    # The step that rents the machine stops sooner, so the clean-up still runs inside this limit.
+    timeout-minutes: 75
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu, fedora]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Across everything the push brought, not only its last commit.
+      - name: Did a pin move?
+        id: moved
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          base="$BEFORE"
+          if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then base=HEAD~1; fi
+          if git diff "$base" HEAD -- hetzner/pom.xml | grep -Eq '^[-+][[:space:]]*<machines\.'; then
+              echo "moved=yes" >> "$GITHUB_OUTPUT"
+          else
+              echo "moved=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: The pinned GraalVM
+        if: steps.moved.outputs.moved == 'yes'
+        uses: ./.github/actions/pinned-jdk
+
+      # This commit's own build, so the snapshot holds the pins this push moved.
+      - name: Build the machine tooling
+        if: steps.moved.outputs.moved == 'yes'
+        run: |
+          ./mvnw -B -q -s settings.xml -pl hetzner -am install -DskipTests
+          ./mvnw -B -q -s settings.xml -pl hetzner dependency:build-classpath \
+              -Dmdep.outputFile=target/cp.txt
+
+      # The product the snapshot proves itself by building, and warms its ~/.m2 with.
+      - name: The sokar checkout the snapshot builds
+        if: steps.moved.outputs.moved == 'yes'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: sokar-ai/sokar
+          path: sokar
+
+      # Proven by building the product on it before it is taken.
+      - name: Build the ${{ matrix.os }} snapshot
+        if: steps.moved.outputs.moved == 'yes'
+        timeout-minutes: 60
+        env:
+          HETZNER_API: ${{ secrets.HETZNER_API }}
+          HETZNER_SSH: ${{ secrets.HETZNER_SSH }}
+          SOKAR_CI_LEG: snapshot-${{ matrix.os }}
+        run: |
+          java -cp "hetzner/target/classes:$(cat hetzner/target/cp.txt)" \
+              org.fuin.sokar.machines.Main snapshot --os ${{ matrix.os }} --repo sokar
+
+      - name: Delete what this run created
+        if: always() && steps.moved.outputs.moved == 'yes'
+        env:
+          HETZNER_API: ${{ secrets.HETZNER_API }}
+          SOKAR_CI_LEG: snapshot-${{ matrix.os }}
+        run: |
+          java -cp "hetzner/target/classes:$(cat hetzner/target/cp.txt)" \
+              org.fuin.sokar.machines.Main sweep --mine
+
+  # The tools, published for the Sokar repositories to resolve.
+  deploy:
+    name: Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build]
+    if: >-
+      github.event_name == 'push'
+      && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # A tag publishes a release, everything else a snapshot. A release is refused unless the tag is exactly
+      # 'v' plus the version it carries, and a version is never a release and a snapshot at once.
+      - name: Which channel
+        id: channel
+        run: |
+          set -eu
+          VERSION="$(sed -n 's|^    <version>\(.*\)</version>$|\1|p' pom.xml | head -1)"
+          [ -n "$VERSION" ] || { echo "::error::no version in pom.xml"; exit 1; }
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+              [ "$GITHUB_REF_NAME" = "v$VERSION" ] \
+                  || { echo "::error::the tag $GITHUB_REF_NAME is not v$VERSION, the version this commit carries"; exit 1; }
+              case "$VERSION" in
+                  *-SNAPSHOT) echo "::error::$VERSION is a snapshot; a release carries its own version"; exit 1 ;;
+              esac
+              echo "channel=releases" >> "$GITHUB_OUTPUT"
+          else
+              case "$VERSION" in
+                  *-SNAPSHOT) ;;
+                  *) echo "::error::$VERSION on a branch would publish a release as a snapshot"; exit 1 ;;
+              esac
+              echo "channel=snapshots" >> "$GITHUB_OUTPUT"
+          fi
+          echo "  $VERSION -> $(tail -1 "$GITHUB_OUTPUT")"
+
+      - name: The pinned GraalVM
+        uses: ./.github/actions/pinned-jdk
+
+      # The unit tests passed in this run, on this commit, before this job could start.
+      # Signed by the plugin's BouncyCastle signer, which reads the armored key and its passphrase from this
+      # step's environment and keeps them in the build's memory: no keyring, so the private key is never written
+      # to the runner's disk for a later step or action to read.
+      - name: Deploy the jars
+        env:
+          OSS_SONATYPE_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
+          OSS_SONATYPE_TOKEN: ${{ secrets.OSS_SONATYPE_TOKEN }}
+          MAVEN_GPG_KEY: ${{ secrets.OSS_SONATYPE_GPG_PRIVATE_KEY }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.OSS_SONATYPE_GPG_PASSPHRASE }}
+        run: ./mvnw -B deploy -Pcentral-sonatype-release -Dgpg.signer=bc -s settings.xml -DskipTests

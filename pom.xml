@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+         child.project.url.inherit.append.path="false">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.fuin</groupId>
+        <artifactId>pom</artifactId>
+        <version>2.0.2</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>org.fuin.sokar</groupId>
+    <artifactId>sokar-buildtools</artifactId>
+    <version>0.4.0</version>
+    <packaging>pom</packaging>
+    <name>Sokar Buildtools</name>
+    <description>Sokar - The build and test tooling shared by the Sokar repositories (PARENT)</description>
+
+    <!-- Overrides the LGPL block inherited from org.fuin:pom, which flatten copies into the
+         published poms of every module here. -->
+    <licenses>
+        <license>
+            <name>GPL-3.0-or-later</name>
+            <url>https://www.gnu.org/licenses/gpl-3.0.html</url>
+            <distribution>repo</distribution>
+            <comments>GNU General Public License v3.0 or later</comments>
+        </license>
+    </licenses>
+
+    <!-- Without the inherit.append.path attributes Maven appends each child's artifactId,
+         so a module would advertise .../sokar-buildtools/sokar-machines/ in its published pom -
+         a path that does not exist. One repository, one url. The project one belongs on
+         <project> and the scm ones on <scm>: they are fields of different model objects. -->
+
+    <url>https://github.com/sokar-ai/sokar-buildtools/</url>
+
+    <scm child.scm.url.inherit.append.path="false"
+         child.scm.connection.inherit.append.path="false"
+         child.scm.developerConnection.inherit.append.path="false">
+        <url>https://github.com/sokar-ai/sokar-buildtools/</url>
+        <connection>scm:git:git://github.com/sokar-ai/sokar-buildtools.git</connection>
+        <developerConnection>scm:git:git@github.com:sokar-ai/sokar-buildtools.git</developerConnection>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/sokar-ai/sokar-buildtools/issues</url>
+    </issueManagement>
+
+    <properties>
+
+        <!-- Nothing is published unless a module opts in, and every module here does: the Sokar
+             repositories resolve these from Central. The aggregator itself is not published -
+             flatten removes the parent from each module's pom, so nothing needs it. -->
+        <!-- Read by maven-deploy-plugin, which -Pcentral-sonatype-release never runs. -->
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <!-- Read by central-publishing-maven-plugin, which is what that profile does run. -->
+        <skipPublishing>true</skipPublishing>
+
+        <!-- Panama FFM is only stable from 22 on, and native-image is built with GraalVM 25. -->
+        <java.release.version>25</java.release.version>
+        <!-- The YAML reader sokar's agent definitions are read with, the same version sokar uses. -->
+        <snakeyaml.version>2.7</snakeyaml.version>
+        <fuin-bom.version>1.0.2</fuin-bom.version>
+        <!-- The library sokar's CycloneDX plugin builds bills with, so a bill is read by the code that wrote it. -->
+        <cyclonedx-core-java.version>9.0.5</cyclonedx-core-java.version>
+        <exec-maven-plugin.version>3.5.1</exec-maven-plugin.version>
+        <error-prone.version>2.50.0</error-prone.version>
+        <nullaway.version>0.14.2</nullaway.version>
+        <logchange-maven-plugin.version>1.19.16</logchange-maven-plugin.version>
+        <bouncycastle.version>1.85.2</bouncycastle.version>
+        <sshj.version>0.40.0</sshj.version>
+        <!-- The JUnit BOM, imported below so that Jupiter, the platform and the suite engine are
+             one set rather than three guesses. The same set as sokar's build, because that is the
+             set Cucumber 7.34 is built against, and a test here and a test there should run on one. -->
+        <junit.version>5.14.2</junit.version>
+        <!-- Late-replaced by surefire. Declared empty so '@{argLine}' resolves when JaCoCo,
+             which normally sets this property, is not active. -->
+        <argLine/>
+    </properties>
+
+    <modules>
+        <module>json</module>
+        <module>hetzner</module>
+        <module>release</module>
+        <module>ffm-check</module>
+        <module>cpu-check</module>
+        <module>package-check</module>
+    </modules>
+
+    <dependencyManagement>
+
+        <dependencies>
+
+            <!-- Before the fuin BOM, so these versions are the ones that win: they have to
+                 agree with each other more than they have to agree with anything else. -->
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Bill of Materials (aligned with Quarkus and Spring Boot BOMs). -->
+            <dependency>
+                <groupId>org.fuin</groupId>
+                <artifactId>bom</artifactId>
+                <version>${fuin-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Third party not covered by the BOM -->
+
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
+            </dependency>
+
+            <!-- Nothing of sokar's: sokar's build runs these tools, so a dependency the other way made the two
+                 impossible to release one after the other. -->
+
+            <dependency>
+                <groupId>org.fuin.sokar</groupId>
+                <artifactId>sokar-json</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.yaml</groupId>
+                <artifactId>snakeyaml</artifactId>
+                <version>${snakeyaml.version}</version>
+            </dependency>
+
+        </dependencies>
+
+    </dependencyManagement>
+
+    <build>
+
+        <pluginManagement>
+
+            <plugins>
+
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>${exec-maven-plugin.version}</version>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <configuration>
+                        <!-- Panama downcalls are a restricted operation and will be blocked
+                             outright in a future release without this. -->
+                        <argLine>@{argLine} --enable-native-access=ALL-UNNAMED</argLine>
+                        <!-- A unit test runs what it starts as it is, on every machine: with a
+                             systemd user manager, task processes would otherwise go into scopes of
+                             their own here and not on a CI runner, and a test would pass on one. -->
+                        <environmentVariables>
+                            <SOKAR_TASK_SCOPES>off</SOKAR_TASK_SCOPES>
+                        </environmentVariables>
+                        <!-- And with nothing installed, on every machine: an agent, a filter or a
+                             transport the sokar packages put under /usr would otherwise be found by
+                             the tests on a developer's machine that has them and not on a runner. -->
+                        <systemPropertyVariables>
+                            <sokar.packaged.root>${project.build.directory}/no-packages</sokar.packaged.root>
+                        </systemPropertyVariables>
+                    </configuration>
+                </plugin>
+
+            </plugins>
+
+        </pluginManagement>
+
+        <plugins>
+
+            <plugin>
+                <groupId>dev.logchange</groupId>
+                <artifactId>logchange-maven-plugin</artifactId>
+                <version>${logchange-maven-plugin.version}</version>
+                <!-- One changelog for the repository, kept at the root rather than in every module. -->
+                <inherited>false</inherited>
+                <executions>
+                    <execution>
+                        <id>logchange-lint</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>lint</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- NullAway makes a broken @NullMarked contract a compile error; main code only, tests pass null on purpose. -->
+            <!-- The lists append, so a module that adds a processor keeps these. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <configuration>
+                            <compilerArgs combine.children="append">
+                                <arg>-XDcompilePolicy=simple</arg>
+                                <arg>--should-stop=ifError=FLOW</arg>
+                                <arg>-Xplugin:ErrorProne -XepDisableAllChecks -Xep:NullAway:ERROR -XepOpt:NullAway:OnlyNullMarked=true</arg>
+                            </compilerArgs>
+                            <annotationProcessorPaths combine.children="append">
+                                <path>
+                                    <groupId>com.google.errorprone</groupId>
+                                    <artifactId>error_prone_core</artifactId>
+                                    <version>${error-prone.version}</version>
+                                </path>
+                                <path>
+                                    <groupId>com.uber.nullaway</groupId>
+                                    <artifactId>nullaway</artifactId>
+                                    <version>${nullaway.version}</version>
+                                </path>
+                            </annotationProcessorPaths>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Resolved versions inline, so the parent and aggregator poms need not be
+                 published. In the main build, not a release profile: what is installed is
+                 then what is deployed. Pom modules are skipped, so aggregators keep theirs. -->
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.8.0</version>
+                <configuration>
+                    <flattenMode>oss</flattenMode>
+                    <updatePomFile>true</updatePomFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+
+    </build>
+
+    <dependencies>
+
+        <!-- compile -->
+
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+        </dependency>
+
+        <!-- test -->
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+</project>

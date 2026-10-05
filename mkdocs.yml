@@ -1,0 +1,10 @@
+site_name: Sokar Build Tools
+docs_dir: doc
+strict: true
+nav:
+  - Overview: index.md
+validation:
+  links:
+    anchors: warn
+    unrecognized_links: warn
+    absolute_links: warn

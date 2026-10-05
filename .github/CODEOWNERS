@@ -1,0 +1,11 @@
+# Changes here wait for the operator's review.
+/.github/                                        @michael-schnell
+/AGENTS.md                                       @michael-schnell
+/pom.xml                                         @michael-schnell
+**/pom.xml                                       @michael-schnell
+/mvnw                                            @michael-schnell
+/mvnw.cmd                                        @michael-schnell
+/.mvn/                                           @michael-schnell
+/settings.xml                                    @michael-schnell
+/mkdocs.yml                                      @michael-schnell
+/hetzner/src/main/resources/org/fuin/sokar/machines/ @michael-schnell

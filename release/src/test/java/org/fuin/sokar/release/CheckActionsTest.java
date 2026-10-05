@@ -213,6 +213,43 @@ class CheckActionsTest {
         assertThat(check(repository.resolve(".github"))).as(stderr()).isEqualTo(0);
     }
 
+    @Test
+    void refusesAWorkflowThatAForkCanTriggerWithTheSecrets() throws IOException {
+        // pull_request_target runs with this repository's secrets on an event a fork's pull request raises.
+        workflow("on:\n  push:\n  pull_request_target:\n    types: [opened]\njobs:\n  a:\n    runs-on: ubuntu-latest\n"
+                + "    steps:\n      - uses: actions/checkout@" + COMMIT + " # v7.0.1\n");
+
+        assertThat(check(directory)).isEqualTo(Stop.REFUSED);
+        assertThat(stderr()).contains("workflows/ci.yml:3").contains("pull_request_target");
+    }
+
+    @Test
+    void refusesItInTheShortFormOfTheTriggers() throws IOException {
+        workflow("on: [push, pull_request_target]\n");
+
+        assertThat(check(directory)).isEqualTo(Stop.REFUSED);
+        assertThat(stderr()).contains("workflows/ci.yml:1").contains("pull_request_target");
+    }
+
+    @Test
+    void refusesARunAfterAnotherThatChecksOutThePullRequestsCode() throws IOException {
+        workflow("on:\n  workflow_run:\n    workflows: [Build]\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n"
+                + "      - uses: actions/checkout@" + COMMIT + " # v7.0.1\n"
+                + "        with:\n          ref: ${{ github.event.workflow_run.head_sha }}\n");
+
+        assertThat(check(directory)).isEqualTo(Stop.REFUSED);
+        assertThat(stderr()).contains("workflows/ci.yml:10").contains("workflow_run");
+    }
+
+    @Test
+    void acceptsARunAfterAnotherOnItsOwnCodeAndTheWordInAnExpression() throws IOException {
+        workflow("on:\n  workflow_run:\n    workflows: [Build]\njobs:\n  a:\n"
+                + "    if: github.event_name != 'pull_request_target'\n    runs-on: ubuntu-latest\n    steps:\n"
+                + "      - uses: actions/checkout@" + COMMIT + " # v7.0.1\n");
+
+        assertThat(check(directory)).as(stderr()).isEqualTo(0);
+    }
+
     private void workflow(String text) throws IOException {
         if (!Files.exists(directory.resolve("dependabot.yml"))) {
             Files.writeString(directory.resolve("dependabot.yml"),

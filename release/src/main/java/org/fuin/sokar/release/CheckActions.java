@@ -45,6 +45,17 @@ final class CheckActions {
             "actions/setup-java");
 
     /** The readable version beside a pin. */
+    /** A trigger named as a key or in a list: not inside a quoted expression, where it is only compared. */
+    private static final Pattern TRIGGER_PULL_REQUEST_TARGET =
+            Pattern.compile("(^|[\\s\\[,{])pull_request_target(\\s*:|\\s*[\\],}]|\\s*$)");
+
+    /** The same for a run that follows another workflow's. */
+    private static final Pattern TRIGGER_WORKFLOW_RUN = Pattern.compile("(^|[\\s\\[,{])workflow_run(\\s*:|\\s*[\\],}]|\\s*$)");
+
+    /** What a run after another takes from the pull request that raised it: its commit, branch or repository. */
+    private static final Pattern PULL_REQUESTS_CODE =
+            Pattern.compile("github\\.event\\.workflow_run\\.(head_sha|head_branch|head_repository|pull_requests)");
+
     private static final Pattern VERSION = Pattern.compile("^\\s*#\\s*v?\\d+\\.\\d+\\.\\d+(\\s|$)");
 
     private final PrintStream out;
@@ -77,9 +88,14 @@ final class CheckActions {
         }
         final List<String> faults = new ArrayList<>();
         int steps = 0;
+        int forkFaults = 0;
         try (Stream<Path> files = Files.walk(directory)) {
             for (final Path file : files.filter(CheckActions::isYaml).sorted().toList()) {
                 final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+                for (final String fork : forks(lines)) {
+                    faults.add(directory.relativize(file) + ":" + fork);
+                    forkFaults++;
+                }
                 for (int at = 0; at < lines.size(); at++) {
                     final Matcher uses = USES.matcher(lines.get(at));
                     if (!uses.matches()) {
@@ -99,6 +115,12 @@ final class CheckActions {
         }
         if (!faults.isEmpty()) {
             faults.forEach(err::println);
+            if (forkFaults == faults.size()) {
+                err.println(faults.size() + " workflow(s) a fork's pull request can run with this repository's secrets."
+                        + " Run on 'pull_request', which a fork gets without them, and keep what needs a secret to a"
+                        + " workflow on this repository's own commits.");
+                return Stop.REFUSED;
+            }
             err.println(faults.size() + " fault(s) in what the build runs or in what moves it. Pin each step to"
                     + " the commit its version stands for, with the version beside it:");
             err.println("    uses: owner/action@<40-digit commit> # v1.2.3");
@@ -108,6 +130,37 @@ final class CheckActions {
         }
         out.println("OK    " + steps + " step(s) under " + directory + ", each pinned to a commit or its own");
         return 0;
+    }
+
+    /**
+     * Finds what lets a fork's pull request run code with this repository's secrets.
+     * <p>
+     * {@code pull_request_target} runs on a fork's pull request with the secrets, and so does {@code workflow_run}
+     * after it; either becomes the fork's code with the secrets once it checks that code out, and the first needs no
+     * more than a step that builds. Both are refused here: the first wherever it is a trigger, the second where it
+     * takes the pull request's commit, branch or repository.
+     *
+     * @param lines One workflow file.
+     * @return Each fault as {@code "<line>: <what>"}, possibly none.
+     */
+    static List<String> forks(List<String> lines) {
+        final List<String> faults = new ArrayList<>();
+        boolean afterAnother = false;
+        for (int at = 0; at < lines.size(); at++) {
+            final String code = code(lines.get(at));
+            if (TRIGGER_PULL_REQUEST_TARGET.matcher(code).find()) {
+                faults.add((at + 1) + ": 'pull_request_target' runs a fork's pull request with this repository's"
+                        + " secrets");
+            }
+            afterAnother |= TRIGGER_WORKFLOW_RUN.matcher(code).find();
+        }
+        for (int at = 0; afterAnother && at < lines.size(); at++) {
+            if (PULL_REQUESTS_CODE.matcher(code(lines.get(at))).find()) {
+                faults.add((at + 1) + ": a 'workflow_run' that takes the triggering pull request's code runs a fork's"
+                        + " code with this repository's secrets");
+            }
+        }
+        return faults;
     }
 
     /**

@@ -22,9 +22,12 @@ import org.junit.jupiter.api.Test;
 @Tag("documents")
 class DocumentTestsTaggedTest {
 
-    /** How a test reaches this repository's documents: a Markdown file or the chapter, by a path out of its module. */
-    private static final Pattern READS_DOCUMENTS =
-            Pattern.compile("Path\\.of\\(\"\\.\\./[^\"]*\\.md\"|Path\\.of\\(\"\\.\\./doc|\"\\.\\./mkdocs\\.yml\"");
+    /**
+     * How a test reaches this repository's documents, by a path out of its module: a Markdown file, the chapter, its
+     * navigation, or the whole repository's root.
+     */
+    private static final Pattern READS_DOCUMENTS = Pattern.compile(
+            "Path\\.of\\(\"\\.\\./[^\"]*\\.md\"|Path\\.of\\(\"\\.\\./doc|\"\\.\\./mkdocs\\.yml\"|Path\\.of\\(\"\\.\\.\"\\)");
 
     private static final String TAG = "@Tag(\"documents\")";
 
@@ -53,7 +56,7 @@ class DocumentTestsTaggedTest {
         // A guard that finds nothing passes forever: assert what it found, then what it checks.
         assertThat(found).extracting(path -> path.getFileName().toString())
                 .as("tests found reading this repository's documents")
-                .contains("CheckSharedTest.java");
+                .contains("CheckSharedTest.java", "CheckCitationsTest.java", "CheckDocSiteTest.java");
         assertThat(found).filteredOn(path -> !read(path).contains(TAG))
                 .as("tests that read a document without %s", TAG)
                 .isEmpty();

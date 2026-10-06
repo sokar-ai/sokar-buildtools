@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -215,6 +216,13 @@ class CheckCitationsTest {
     void refusesARootWithNoPageAtAll(@TempDir Path empty) {
         assertThat(new CheckCitations(stream(out), stream(err)).check(empty)).isEqualTo(Stop.REFUSED);
         assertThat(stderr()).contains("no Markdown page");
+    }
+
+    @Test
+    @Tag("documents")
+    void thisRepositoryCitesNoIssueThatGoesStale() {
+        // check-citations is this repository's own, so this test is the check.
+        assertThat(new CheckCitations(stream(out), stream(err)).check(Path.of(".."))).as(stderr()).isEqualTo(0);
     }
 
     @Test

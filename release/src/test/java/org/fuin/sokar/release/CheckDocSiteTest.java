@@ -8,6 +8,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -74,6 +75,15 @@ class CheckDocSiteTest {
 
         assertThat(check()).isEqualTo(Stop.REFUSED);
         assertThat(stderr()).contains("no page");
+    }
+
+    @Test
+    @Tag("documents")
+    void thisRepositorysChapterCanBeFoundAndFollowed() {
+        // check-doc-site is this repository's own, so this test is the check.
+        assertThat(new CheckDocSite(new PrintStream(out, true, StandardCharsets.UTF_8),
+                new PrintStream(err, true, StandardCharsets.UTF_8)).check(Path.of("../doc"), Path.of("../mkdocs.yml")))
+                .as(stderr()).isEqualTo(0);
     }
 
     @Test

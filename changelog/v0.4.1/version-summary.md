@@ -7,10 +7,6 @@
 <!-- !!! ⚠️ DO NOT MODIFY THIS FILE, YOUR CHANGES WILL BE LOST ⚠️ !!! -->
 
 
-[unreleased]
-------------
-
-
 [0.4.1] - 2026-10-06
 --------------------
 
@@ -21,14 +17,5 @@
 ### Changed (1 change)
 
 - The build checks this repository's own citations and documentation chapter on every push, beside its shared block 
-
-
-[0.4.0] - 2026-10-05
---------------------
-
-### Added (1 change)
-
-- Initial public version 
-
 
 

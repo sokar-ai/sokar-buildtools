@@ -60,6 +60,14 @@ class CheckDocSiteTest {
     }
 
     @Test
+    void readsNoLinkInCode() throws IOException {
+        write("doc/index.md", "Cite as `[index](…)`, or:\n\n```\n[gone](missing.md)\n```\n");
+        write("mkdocs.yml", "nav:\n  - Home: index.md\n");
+
+        assertThat(check()).as(stderr()).isEqualTo(0);
+    }
+
+    @Test
     void refusesAChapterWithNoPage() throws IOException {
         Files.createDirectories(root.resolve("doc"));
         write("mkdocs.yml", "nav: []\n");

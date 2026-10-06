@@ -1,0 +1,2 @@
+# The tests of check-citations feed it issue numbers on purpose, to watch each rule refuse them.
+release/src/test/java/org/fuin/sokar/release/CheckCitationsTest.java

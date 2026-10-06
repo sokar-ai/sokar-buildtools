@@ -21,6 +21,9 @@ import java.util.stream.Stream;
  */
 final class CheckDocSite {
 
+    /** A fenced block or an inline code span: what it shows is text, never a link, to the site as to a reader. */
+    private static final Pattern CODE = Pattern.compile("(?ms)^```.*?^```|`[^`\\n]*`");
+
     /** A Markdown link's target, without its title. */
     private static final Pattern LINK = Pattern.compile("\\]\\(([^)\\s]+)(?:\\s+\"[^\"]*\")?\\)");
 
@@ -87,7 +90,7 @@ final class CheckDocSite {
 
     private static List<String> linksThatCannotBeFollowed(Path doc, Path page) throws IOException {
         final List<String> faults = new ArrayList<>();
-        final Matcher link = LINK.matcher(Files.readString(page, StandardCharsets.UTF_8));
+        final Matcher link = LINK.matcher(CODE.matcher(Files.readString(page, StandardCharsets.UTF_8)).replaceAll(""));
         while (link.find()) {
             final String target = link.group(1);
             if (target.startsWith("http://") || target.startsWith("https://") || target.startsWith("mailto:")

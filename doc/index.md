@@ -24,6 +24,20 @@ may publish, and checks the native images and packages before they go out.
 | `frontend` | `sokar-machines` to lease a machine its integration tests reach; `sokar-release` for the shared rules |
 | `sluice`, `matrix` | `sokar-machines` for the GraalVM; `sokar-release` for the shared rules |
 
+## What `check-citations` reads
+
+Every committed text file: what `git ls-files` names in a checkout, every file in a tree exported from a commit. A
+binary file - one holding a NUL byte or bytes that are not UTF-8 - is skipped and counted. Build output is not read.
+
+- **Outside `issues/`**, no file names an issue number, and no link goes to an issue's file or a design document.
+- **Among the issues**, a number of the repository's own prefixes - the prefixes its issue files carry - names an
+  issue file that exists, and a number beside an `[index](…)` link into the repository names one too.
+- **A line that holds an issue number's shape on purpose**, as test data for something that reads such text, says
+  `not-a-citation` in its own text. A linter's codes after `noqa:` are not read.
+- **A whole file of such text** is named in `citations-exempt.txt` at the repository's root, one path per line,
+  relative to the root, with `#` starting a comment; a path there that is not a committed file is refused, so the
+  list cannot outlive what it exempts.
+
 ## How a repository takes them
 
 `sokar` names the version in its root pom, `sokar.buildtools.version`, and publishes it in `sokar-bom`. Every other

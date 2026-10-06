@@ -8,6 +8,8 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -30,8 +32,8 @@ class CheckCitationsTest {
     }
 
     @Test
-    void acceptsARepositoryThatCitesByNumberAndIndex() throws IOException {
-        write("README.md", "# A repository\n\nSee **B10** ([index](issues/README.md)).\n");
+    void acceptsIssuesCitingEachOtherByNumberAndIndex() throws IOException {
+        write("issues/B11-Another.md", "Needs **B10** ([index](README.md)).\n");
 
         assertThat(check()).as(stderr()).isEqualTo(0);
         assertThat(stdout()).contains("citations in").contains("2 issue(s)");
@@ -47,7 +49,7 @@ class CheckCitationsTest {
 
     @Test
     void refusesALinkToAnIssueFileFromAPage() throws IOException {
-        write("doc/guide.md", "Line one\nSee [B10](../issues/B10-A-Thing.md#why).\n");
+        write("doc/guide.md", "Line one\nSee [the thing](../issues/B10-A-Thing.md#why).\n");
 
         assertThat(check()).isEqualTo(Stop.REFUSED);
         assertThat(stderr()).contains("doc/guide.md:2 -> ../issues/B10-A-Thing.md#why");
@@ -70,17 +72,27 @@ class CheckCitationsTest {
 
     @Test
     void refusesAPointerToAnIssueThatIsGoneEvenWhenWrappedAndBold() throws IOException {
-        write("README.md", "Waits on **B12**\n  ([index](issues/README.md)).\n");
+        write("issues/B11-Another.md", "Waits on **XY12**\n  ([index](README.md)).\n");
 
         assertThat(check()).isEqualTo(Stop.REFUSED);
-        assertThat(stderr()).contains("README.md:1 -> B12");
+        assertThat(stderr()).contains("issues/B11-Another.md:1 -> XY12");
     }
 
     @Test
     void leavesAPointerIntoAnotherRepositorysIndexAlone() throws IOException {
-        write("README.md", "Blocked by F31 ([index](https://github.com/x/frontend/blob/main/issues/README.md)).\n");
+        write("issues/B11-Another.md",
+                "Blocked by F31 ([index](https://github.com/x/frontend/blob/main/issues/README.md)).\n");
 
         assertThat(check()).as(stderr()).isEqualTo(0);
+    }
+
+    @Test
+    void refusesANumberOfThisRepositorysOwnAmongTheIssuesThatNamesNoIssue() throws IOException {
+        // The index row or the "blocked by" its deletion missed; another repository's number is not ours to check.
+        write("issues/README.md", "| [B10](B10-A-Thing.md) | B12 | waits on sokar-frontend F31 |\n");
+
+        assertThat(check()).isEqualTo(Stop.REFUSED);
+        assertThat(stderr()).contains("issues/README.md:1 -> B12").doesNotContain("F31");
     }
 
     @Test
@@ -90,6 +102,31 @@ class CheckCitationsTest {
 
         assertThat(check()).isEqualTo(Stop.REFUSED);
         assertThat(stderr()).contains("src/main/java/A.java:2 -> B10").contains("lib/a.dart:1 -> PJ19");
+    }
+
+    @Test
+    void refusesAnIssueNumberInEveryTextFileOutsideTheIssues() throws IOException {
+        write("README.md", "Built for B10.\n");
+        write("CHANGELOG.md", "- B11 done\n");
+        write("src/test/resources/fixture.json", "{\"note\": \"from PJ18\"}\n");
+        write("notes.txt", "see SL04\n");
+        write("dist/control", "Description: B10\n");
+        write("Dockerfile", "# CC23\nFROM scratch\n");
+
+        assertThat(check()).isEqualTo(Stop.REFUSED);
+        assertThat(stderr()).contains("README.md:1 -> B10", "CHANGELOG.md:1 -> B11",
+                "src/test/resources/fixture.json:1 -> PJ18", "notes.txt:1 -> SL04", "dist/control:1 -> B10",
+                "Dockerfile:1 -> CC23");
+    }
+
+    @Test
+    void skipsABinaryFileAndCountsIt() throws IOException {
+        // Valid UTF-8 but for the NUL, so only the NUL makes it binary.
+        Files.write(root.resolve("image.png"), new byte[] {'P', 'N', 'G', 0, 'B', '1', '0'});
+        Files.write(root.resolve("latin1.txt"), new byte[] {'B', '1', '0', ' ', (byte) 0xE9});
+
+        assertThat(check()).as(stderr()).isEqualTo(0);
+        assertThat(stdout()).contains("2 binary file(s) skipped");
     }
 
     @Test
@@ -126,6 +163,37 @@ class CheckCitationsTest {
     }
 
     @Test
+    void acceptsAWholeFileTheExemptListNames() throws IOException {
+        write("src/test/resources/corpus.txt", "Run 283 had 2 red in B76 and B85.\nsee MX12 and F80\n");
+        write(CheckCitations.EXEMPT, "# measured prose the filter reads\nsrc/test/resources/corpus.txt\n");
+
+        assertThat(check()).as(stderr()).isEqualTo(0);
+        assertThat(stdout()).contains("1 exempt");
+    }
+
+    @Test
+    void refusesAnExemptionForAFileThatIsNotThere() throws IOException {
+        write(CheckCitations.EXEMPT, "src/test/resources/gone.txt  # it was deleted\n");
+
+        assertThat(check()).isEqualTo(Stop.REFUSED);
+        assertThat(stderr()).contains(CheckCitations.EXEMPT + " names src/test/resources/gone.txt");
+    }
+
+    @Test
+    void readsOnlyWhatGitTracksInACheckout() throws Exception {
+        write("doc/guide.md", "Fine.\n");
+        git("init", "-q");
+        git("add", "README.md", "issues", "doc");
+        write("suite.log", "a log a tool left: B99\n");
+
+        assertThat(check()).as(stderr()).isEqualTo(0);
+
+        git("add", "suite.log");
+        assertThat(check()).isEqualTo(Stop.REFUSED);
+        assertThat(stderr()).contains("suite.log:1 -> B99");
+    }
+
+    @Test
     void ignoresBuildOutput() throws IOException {
         write("target/classes/A.java", "// B99\n");
         write("build/out.md", "[x](issues/B99-Gone.md)\n");
@@ -146,7 +214,20 @@ class CheckCitationsTest {
     }
 
     private int check() {
+        out.reset();
+        err.reset();
         return new CheckCitations(stream(out), stream(err)).check(root);
+    }
+
+    private void git(String... args) throws Exception {
+        final List<String> command = new ArrayList<>(List.of("git", "-C", root.toString()));
+        command.addAll(List.of(args));
+        final ProcessBuilder builder = new ProcessBuilder(command).redirectErrorStream(true);
+        builder.environment().put("GIT_CONFIG_GLOBAL", "/dev/null");
+        builder.environment().put("GIT_CONFIG_NOSYSTEM", "1");
+        final Process git = builder.start();
+        final String said = new String(git.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        assertThat(git.waitFor()).as("git %s: %s", String.join(" ", args), said).isEqualTo(0);
     }
 
     private void write(String name, String text) throws IOException {

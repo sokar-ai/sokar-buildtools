@@ -37,7 +37,7 @@ The build and test tooling the Sokar repositories share, published to Central as
 
 ## Shared across the Sokar repositories
 
-> **BEGIN Shared Area** · sha256 `9a3c3ef49781a5b6` · changed 2026-10-06T06:00Z
+> **BEGIN Shared Area** · sha256 `ab50c3787a547eab` · changed 2026-10-06T09:00Z
 
 Identical in every repository `project.yml` names. The markers carry the SHA-256 of the lines between
 them (the first 16 hex digits) and the UTC time that text last changed; change it in the channel
@@ -167,6 +167,9 @@ first, never in one copy.
   machine - never which ought to have. A change to documents or issues only needs the tests tagged
   `documents`, which run alone; every test that reads a document carries that tag, and a test fails
   when one does not.
+- **A repository with a workflow runs `sokar-release`'s `check-shared`, `check-citations` and, where
+  there is a documentation chapter, `check-doc-site`, with the tests tagged `documents`, on every
+  push and pull request**, on a GitHub runner; the build skips a change to documents only.
 - **A test result names every skipped test**, never just a count.
 - **A failing check prints what it asked and what it got, never a guessed cause**, and its failure
   path has been made to happen once and read.
@@ -263,4 +266,4 @@ first, never in one copy.
 - **Every native executable is built with `-march=x86-64`**, so it starts on any x86-64 CPU, and the
   build checks each executable for exactly that instruction set.
 
-> **END Shared Area** · sha256 `9a3c3ef49781a5b6`
+> **END Shared Area** · sha256 `ab50c3787a547eab`

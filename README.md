@@ -1,6 +1,6 @@
 # sokar-buildtools
 
-<img src="doc/images/early-bird.svg" width="640" alt="Early bird - work in progress">
+<img src="doc/images/early-bird.svg" width="350" alt="Early bird - work in progress">
 
 > **Early bird - work in progress.** Sokar is not stable yet: until release 1.0.0, its code, commands
 > and file formats can change without notice.

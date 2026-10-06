@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -108,6 +109,7 @@ class CheckSharedTest {
     }
 
     @Test
+    @Tag("documents")
     void thisRepositorysOwnRulesCarryTheirTrueHash() {
         assertThat(check(Path.of("../AGENTS.md"))).as(stderr()).isEqualTo(0);
     }

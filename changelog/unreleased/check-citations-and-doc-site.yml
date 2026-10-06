@@ -1,0 +1,2 @@
+title: "Check citations and documentation chapters: check-citations refuses a link to an issue's file, a pointer to an issue that is gone and an issue number in a source or a published page; check-doc-site refuses a page missing from the navigation or in it twice and a link a published page could not follow"
+type: added

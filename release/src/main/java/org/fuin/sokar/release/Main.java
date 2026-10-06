@@ -22,7 +22,8 @@ public final class Main {
 
     /** The commands this build knows, named in the refusal of one it does not. */
     static final List<String> COMMANDS = List.of("compare-bills", "add-fetched-cli", "add-component",
-            "merge-tree-bill", "upstream-version", "update", "check-pin", "check-actions", "check-shared");
+            "merge-tree-bill", "upstream-version", "update", "check-pin", "check-actions", "check-shared",
+            "check-citations", "check-doc-site");
 
     private Main() {
         throw new UnsupportedOperationException("Utility class");
@@ -102,6 +103,13 @@ public final class Main {
                     : new CheckActions(out, err).check(Path.of(rest.isEmpty() ? ".github" : rest.getFirst()));
             case "check-shared" -> new CheckShared(out, err).check(
                     (rest.isEmpty() ? List.of("AGENTS.md") : rest).stream().map(Path::of).toList());
+            case "check-citations" -> rest.size() > 1
+                    ? usage(err, "check-citations [REPOSITORY ROOT, default .]")
+                    : new CheckCitations(out, err).check(Path.of(rest.isEmpty() ? "." : rest.getFirst()));
+            case "check-doc-site" -> rest.size() > 2
+                    ? usage(err, "check-doc-site [DOC DIRECTORY, default doc] [MKDOCS FILE, default mkdocs.yml]")
+                    : new CheckDocSite(out, err).check(Path.of(rest.isEmpty() ? "doc" : rest.getFirst()),
+                            Path.of(rest.size() < 2 ? "mkdocs.yml" : rest.get(1)));
             default -> unknown(command, err);
         };
     }

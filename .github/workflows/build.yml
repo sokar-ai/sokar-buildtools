@@ -1,16 +1,16 @@
 # What a change proves, and where.
 name: Build
 
-# A push that only touches documentation builds nothing.
+# A push that only touches documentation builds nothing; the Shared rules workflow checks it.
 on:
   push:
     branches: ['**']
     # A release: v<version>, built and published to Central's releases. Paths are not filtered for a tag.
     tags: ['v*']
-    paths-ignore: ['**/*.md']
+    paths-ignore: ['**/*.md', 'mkdocs.yml', 'doc/**', 'issues/**']
   pull_request:
     branches: ['**']
-    paths-ignore: ['**/*.md']
+    paths-ignore: ['**/*.md', 'mkdocs.yml', 'doc/**', 'issues/**']
   workflow_dispatch:
 
 # One run per branch. Runs queue rather than cancel each other, so a newer push cannot kill Publish

@@ -1,0 +1,2 @@
+title: "A push that changes only documents - Markdown, mkdocs.yml, doc/ and issues/ - starts no build and leases no machine; the Shared rules workflow checks it"
+type: changed

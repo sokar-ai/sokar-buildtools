@@ -70,6 +70,12 @@ final class CheckCitations {
      */
     private static final Pattern MARKED = Pattern.compile("(?m)^.*not-a-citation.*$");
 
+    /**
+     * Files no person writes, whose text has an issue number's shape by chance: an image's path data, a lock file's
+     * hashes.
+     */
+    private static final Pattern NOT_WRITTEN = Pattern.compile("(^|/)(package-lock\\.json|[^/]+\\.lock|[^/]+\\.svg)$");
+
     /** Directories nothing in them is written by a person: build output, tool state, git's own. */
     private static final List<String> GENERATED = List.of("/target/", "/build/", "/.git/", "/.idea/",
             "/.dart_tool/", "/node_modules/", "/.gradle/");
@@ -126,6 +132,7 @@ final class CheckCitations {
         final List<String> gone = new ArrayList<>();
         int read = 0;
         int binary = 0;
+        int generatedFiles = 0;
         try {
             for (final Path page : pages) {
                 final Optional<String> text = text(page);
@@ -146,6 +153,10 @@ final class CheckCitations {
                 if (name.equals(EXEMPT) || exempt.contains(name)) {
                     continue;
                 }
+                if (NOT_WRITTEN.matcher(name).find()) {
+                    generatedFiles++;
+                    continue;
+                }
                 final Optional<String> text = text(file);
                 if (text.isEmpty()) {
                     binary++;
@@ -160,7 +171,8 @@ final class CheckCitations {
         }
         if (stale.isEmpty() && links.isEmpty() && pointers.isEmpty() && numbers.isEmpty() && gone.isEmpty()) {
             out.println("OK    citations in " + root + ": " + pages.size() + " page(s), " + read + " text file(s), "
-                    + binary + " binary file(s) skipped, " + exempt.size() + " exempt, " + issues.size()
+                    + binary + " binary and " + generatedFiles + " generated file(s) skipped, " + exempt.size()
+                    + " exempt, " + issues.size()
                     + " issue(s)");
             return 0;
         }

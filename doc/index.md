@@ -27,7 +27,8 @@ may publish, and checks the native images and packages before they go out.
 ## What `check-citations` reads
 
 Every committed text file: what `git ls-files` names in a checkout, every file in a tree exported from a commit. A
-binary file - one holding a NUL byte or bytes that are not UTF-8 - is skipped and counted. Build output is not read.
+binary file - one holding a NUL byte or bytes that are not UTF-8 - is skipped and counted, and so is a file no person
+writes: an SVG image's path data, a lock file's hashes. Build output is not read.
 
 - **Outside `issues/`**, no file names an issue number, and no link goes to an issue's file or a design document.
 - **Among the issues**, a number of the repository's own prefixes - the prefixes its issue files carry - names an

@@ -126,7 +126,17 @@ class CheckCitationsTest {
         Files.write(root.resolve("latin1.txt"), new byte[] {'B', '1', '0', ' ', (byte) 0xE9});
 
         assertThat(check()).as(stderr()).isEqualTo(0);
-        assertThat(stdout()).contains("2 binary file(s) skipped");
+        assertThat(stdout()).contains("2 binary and 0 generated file(s) skipped");
+    }
+
+    @Test
+    void skipsAnImagesPathDataAndALockFilesHashes() throws IOException {
+        write("doc/images/logo.svg", "<path d=\"M20 10 C12 4 B10 8\"/>\n");
+        write("src/main/npm/package-lock.json", "{\"integrity\": \"sha512-ab+X768/F77==\"}\n");
+        write("pubspec.lock", "sha256: S03\n");
+
+        assertThat(check()).as(stderr()).isEqualTo(0);
+        assertThat(stdout()).contains("3 generated file(s) skipped");
     }
 
     @Test

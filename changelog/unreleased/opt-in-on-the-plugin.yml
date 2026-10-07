@@ -1,0 +1,2 @@
+title: sokar-release check-releases also reads a module's opt-in to Central where it sets it on the publishing plugins, as a BOM does
+type: added

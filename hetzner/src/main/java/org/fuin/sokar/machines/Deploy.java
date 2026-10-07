@@ -156,6 +156,7 @@ final class Deploy {
             return 1;
         }
         final Path stub = repository.resolve("agents/stub/target/sokar-agent-stub");
+        final Path buildStub = repository.resolve("builds/stub/target/sokar-build-stub");
         final String machineWide = packaged(remote);
         if (scope == Scope.ACCOUNT) {
             say(out, "installing " + deb.get().getFileName() + " into " + user + "'s own directories, without dpkg");
@@ -171,6 +172,22 @@ final class Deploy {
             say(out, "checking nothing shadows what was just installed");
             if (!unshadowed(remote, out)) {
                 return 1;
+            }
+        }
+
+        // The stub build reader, for the user only, as the suite's builds scenarios expect it: a tree from before
+        // build readers has none, and nothing is installed then.
+        if (Files.isExecutable(buildStub)) {
+            say(out, "installing the stub build reader for " + user);
+            final String buildStaging = staging(remote);
+            try {
+                final String remoteBuildStub = buildStaging + "/sokar-build-stub";
+                remote.upload(buildStub, remoteBuildStub);
+                if (!must(remote, Leg.installBuildStub(AgentLeg.quote(remoteBuildStub)), out)) {
+                    return 1;
+                }
+            } finally {
+                remote.run("rm -rf " + AgentLeg.quote(buildStaging));
             }
         }
 

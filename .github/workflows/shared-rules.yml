@@ -22,7 +22,7 @@ jobs:
       - name: The pinned GraalVM
         uses: ./.github/actions/pinned-jdk
 
-      # check-shared, check-citations and check-doc-site are this repository's own, so the tests that run them
+      # check-shared, check-citations, check-readmes and check-doc-site are this repository's own, so the tests that run them
       # against it are the check: the ones tagged documents.
       - name: The documents
         run: ./mvnw -B -s settings.xml -Pdocuments test

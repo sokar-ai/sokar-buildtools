@@ -13,12 +13,12 @@ The build and test tooling shared by the Sokar repositories, published to Maven 
 
 | Artifact | Directory | What it does |
 |---|---|---|
-| `sokar-machines` | `hetzner/` | Rents test machines, builds the snapshots they boot from, runs the acceptance legs on them, and installs the pinned GraalVM in CI. |
-| `sokar-release` | `release/` | Decides what an agent package may publish without a person, moves named pins, and checks that every workflow step is pinned by commit. |
-| `sokar-ffm-check` | `ffm-check/` | Checks that every FFM downcall a test makes is registered for the native image. |
-| `sokar-cpu-check` | `cpu-check/` | Checks that a native image runs on any x86-64 CPU. |
-| `sokar-package-check` | `package-check/` | Checks the .deb and the .rpm against each other and against a real install. |
-| `sokar-json` | `json/` | The JSON reader and writer the tools above share. |
+| `sokar-machines` | [`hetzner/`](hetzner/README.md) | Rents test machines, builds the snapshots they boot from, runs the acceptance legs on them, and installs the pinned GraalVM in CI. |
+| `sokar-release` | [`release/`](release/README.md) | Decides what an agent package may publish without a person, moves named pins, and checks that every workflow step is pinned by commit. |
+| `sokar-ffm-check` | [`ffm-check/`](ffm-check/README.md) | Checks that every FFM downcall a test makes is registered for the native image. |
+| `sokar-cpu-check` | [`cpu-check/`](cpu-check/README.md) | Checks that a native image runs on any x86-64 CPU. |
+| `sokar-package-check` | [`package-check/`](package-check/README.md) | Checks the .deb and the .rpm against each other and against a real install. |
+| `sokar-json` | [`json/`](json/README.md) | The JSON reader and writer the tools above share. |
 
 ## Building
 

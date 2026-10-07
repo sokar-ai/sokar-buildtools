@@ -63,7 +63,25 @@ public final class Leg {
                 // sokar's settings.xml, where the build tooling's snapshots come from; the machine has none of its own.
                 + "PATH=/opt/graalvm/bin:$PATH ./mvnw -B -s settings.xml -Pnative -DskipTests package "
                 + (runNumber == null ? "" : "-Dsokar.snapshot.run=" + runNumber + " ")
-                + "-pl app,daemon,hooks,agents/stub -am";
+                + "-pl app,daemon,hooks,agents/stub" + BUILD_STUB_MODULE + " -am";
+    }
+
+    /**
+     * The stub build reader's module, for a tree that has one: a leg also builds commits from before it existed.
+     * Shell, appended to a {@code -pl} list run from the checkout.
+     */
+    static final String BUILD_STUB_MODULE = "$(test -d builds/stub && echo ,builds/stub)";
+
+    /**
+     * Installs the stub build reader for the account, under the forge name the suite's projects give it, when the tree
+     * built one. Shell, run from anywhere.
+     *
+     * @param binary Where the build put it.
+     * @return The command; true when there is nothing to install.
+     */
+    static String installBuildStub(final String binary) {
+        return "if [ -x " + binary + " ]; then install -D -m 0755 " + binary
+                + " \"$HOME/.local/share/sokar/builds/stub-forge\"; fi";
     }
 
     /**
@@ -188,6 +206,7 @@ public final class Leg {
                     + " && cp " + REPO + "/egress/*.yaml ~/.local/share/sokar/egress/"
                     + " && cp " + String.join(" ", agents.stream().map(AgentLeg::quote).toList())
                     + " ~/.local/share/sokar/agents/"
+                    + " && " + installBuildStub(REPO + "/builds/stub/target/sokar-build-stub")
                     + " && ~/.local/bin/sokar setup");
 
             step("what sokar thinks of this machine");
@@ -371,6 +390,8 @@ public final class Leg {
                 + " && cp -r " + from + "/.local/bin " + home + "/.local/"
                 + " && cp -r " + from + "/.local/share/sokar/agents " + from + "/.local/share/sokar/providers "
                 + from + "/.local/share/sokar/egress " + home + "/.local/share/sokar/"
+                + " && if [ -d " + from + "/.local/share/sokar/builds ]; then cp -r " + from
+                + "/.local/share/sokar/builds " + home + "/.local/share/sokar/; fi"
                 + " && chown -R " + user + ":" + user + " " + home + "/.local";
     }
 

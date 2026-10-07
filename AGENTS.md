@@ -37,11 +37,11 @@ The build and test tooling the Sokar repositories share, published to Central as
 
 ## Shared across the Sokar repositories
 
-> **BEGIN Shared Area** · sha256 `ab50c3787a547eab` · changed 2026-10-06T09:00Z
+> **BEGIN Shared Area** · sha256 `9c925595a1441fef` · changed 2026-10-07T09:00Z
 
-Identical in every repository `project.yml` names. The markers carry the SHA-256 of the lines between
-them (the first 16 hex digits) and the UTC time that text last changed; change it in the channel
-first, never in one copy.
+Identical in every repository `project.yml` names but `sokar-parent`, which holds only the parent pom
+and no `AGENTS.md`. The markers carry the SHA-256 of the lines between them (the first 16 hex digits)
+and the UTC time that text last changed; change it in the channel first, never in one copy.
 
 ### Agents and the rules they follow
 
@@ -246,6 +246,22 @@ first, never in one copy.
 - **A Java repository builds, checks and tests with Java and Maven only.** A file that cannot be
   Java - `mvnw`, or a script that runs where there is no Java yet - is named in its repository's own
   part with the reason, and no repository keeps a copy of a helper another one has.
+- **Maven modules that belong together - the layers of one program, its packages - are submodules of
+  one module of packaging `pom` named for what they share**, so the root lists parts, not pieces.
+  Grouping changes only `parent` and `relativePath`, never a `groupId` or `artifactId`.
+- **Every directory with a `pom.xml` has a `README.md`**: two or three sentences on what the module is
+  and is not, a link to each of its submodules, and only the few technical facts that matter most, such
+  as what it must never depend on; details are linked in `doc/`, never repeated. `sokar-release
+  check-readmes` holds it.
+- **Only what another repository or an outsider builds against is published to Maven Central, each such
+  module opting in; the root and every grouping module are never published.** Every published pom is
+  flattened, so it names no parent and a consumer needs nothing but the module itself; `sokar-release
+  check-releases` refuses a release whose published pom still names one. A BOM is imported, never a
+  parent.
+- **Every Sokar Maven repository takes `org.fuin.sokar:sokar-parent` as its parent** and declares only what
+  is its own; one that publishes declares `flatten-maven-plugin` by name in its root, and the parent's
+  management flattens every module. `sokar-parent` names no parent and uses nothing of another Sokar
+  repository.
 - **Every Java package with main code is `@NullMarked` and checked by NullAway as an error when it
   compiles**, with a test that fails on an unmarked package.
 - **`Files.move` with `ATOMIC_MOVE` replaces a file that already has the target name**; where the
@@ -258,6 +274,9 @@ first, never in one copy.
   beside it, the JDK (from `sokar-machines jdk --github`), Maven and images by version and digest,
   updated by Dependabot weekly, in one group, after three days. `sokar-release check-actions`
   enforces it.
+- **While it is developed, a repository may build against another Sokar repository's snapshot from
+  Sonatype**, and its build may fail for a while when that snapshot moves; a release depends only on
+  releases, which the release build checks.
 - **Packages are built online**: offline, the CycloneDX bill of materials skips itself with only a
   warning, and the package ships without it.
 - **A publish is believed only once the published index shows the exact version**, probed with
@@ -266,4 +285,4 @@ first, never in one copy.
 - **Every native executable is built with `-march=x86-64`**, so it starts on any x86-64 CPU, and the
   build checks each executable for exactly that instruction set.
 
-> **END Shared Area** · sha256 `ab50c3787a547eab`
+> **END Shared Area** · sha256 `9c925595a1441fef`

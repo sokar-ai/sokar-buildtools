@@ -83,6 +83,19 @@
             <artifactId>bcprov-jdk18on</artifactId>
         </dependency>
 
+        <!-- Declared, so the flattened pom carries them: sshj alone would bring 1.80 beside bcprov's 1.85.2. -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcutil-jdk18on</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

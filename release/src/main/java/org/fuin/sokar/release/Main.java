@@ -23,7 +23,7 @@ public final class Main {
     /** The commands this build knows, named in the refusal of one it does not. */
     static final List<String> COMMANDS = List.of("compare-bills", "add-fetched-cli", "add-component",
             "merge-tree-bill", "upstream-version", "update", "check-pin", "check-actions", "check-shared",
-            "check-citations", "check-doc-site");
+            "check-citations", "check-doc-site", "check-releases", "check-readmes");
 
     private Main() {
         throw new UnsupportedOperationException("Utility class");
@@ -110,8 +110,32 @@ public final class Main {
                     ? usage(err, "check-doc-site [DOC DIRECTORY, default doc] [MKDOCS FILE, default mkdocs.yml]")
                     : new CheckDocSite(out, err).check(Path.of(rest.isEmpty() ? "doc" : rest.getFirst()),
                             Path.of(rest.size() < 2 ? "mkdocs.yml" : rest.get(1)));
+            case "check-releases" -> checkReleases(rest, out, err);
+            case "check-readmes" -> rest.size() > 1
+                    ? usage(err, "check-readmes [REPOSITORY ROOT, default .]")
+                    : new CheckReadmes(out, err).check(Path.of(rest.isEmpty() ? "." : rest.getFirst()));
             default -> unknown(command, err);
         };
+    }
+
+    private static int checkReleases(List<String> rest, PrintStream out, PrintStream err) {
+        final List<String> required = new java.util.ArrayList<>();
+        String file = null;
+        for (int at = 0; at < rest.size(); at++) {
+            if ("--requires".equals(rest.get(at)) && at + 1 < rest.size()
+                    && rest.get(at + 1).matches("[^:\\s]+:[^:\\s]+")) {
+                required.add(rest.get(++at));
+            } else if (file == null && !rest.get(at).startsWith("--")) {
+                file = rest.get(at);
+            } else {
+                file = null;
+                break;
+            }
+        }
+        if (file == null) {
+            return usage(err, "check-releases EFFECTIVE-POM [--requires GROUP:ARTIFACT]...");
+        }
+        return new CheckReleases(out, err).check(Path.of(file), required);
     }
 
     private static int unknown(String command, PrintStream err) {

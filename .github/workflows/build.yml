@@ -154,6 +154,16 @@ jobs:
       - name: The pinned GraalVM
         uses: ./.github/actions/pinned-jdk
 
+      # A release depends only on releases: every snapshot in the effective pom - a dependency, a plugin, a plugin's
+      # dependency - refused and named, by the sokar-release this very commit builds, installed first.
+      - name: No snapshot in a release
+        if: steps.channel.outputs.channel == 'releases'
+        run: |
+          set -eu
+          ./mvnw -B -q -s settings.xml install -DskipTests
+          ./mvnw -B -q -s settings.xml help:effective-pom -Doutput="$PWD/target/effective-pom.xml"
+          ./mvnw -B -s settings.xml -pl release exec:java@check-releases
+
       # The unit tests passed in this run, on this commit, before this job could start.
       # Signed by the plugin's BouncyCastle signer, which reads the armored key and its passphrase from this
       # step's environment and keeps them in the build's memory: no keyring, so the private key is never written

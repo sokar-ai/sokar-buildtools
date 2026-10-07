@@ -7,9 +7,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.fuin</groupId>
-        <artifactId>pom</artifactId>
-        <version>2.0.2</version>
+        <groupId>org.fuin.sokar</groupId>
+        <artifactId>sokar-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
         <relativePath/>
     </parent>
 
@@ -52,35 +52,16 @@
     </issueManagement>
 
     <properties>
-
-        <!-- Nothing is published unless a module opts in, and every module here does: the Sokar
-             repositories resolve these from Central. The aggregator itself is not published -
-             flatten removes the parent from each module's pom, so nothing needs it. -->
-        <!-- Read by maven-deploy-plugin, which -Pcentral-sonatype-release never runs. -->
-        <maven.deploy.skip>true</maven.deploy.skip>
-        <!-- Read by central-publishing-maven-plugin, which is what that profile does run. -->
-        <skipPublishing>true</skipPublishing>
-
-        <!-- Panama FFM is only stable from 22 on, and native-image is built with GraalVM 25. -->
-        <java.release.version>25</java.release.version>
-        <!-- The YAML reader sokar's agent definitions are read with, the same version sokar uses. -->
-        <snakeyaml.version>2.7</snakeyaml.version>
-        <fuin-bom.version>1.0.2</fuin-bom.version>
-        <!-- The library sokar's CycloneDX plugin builds bills with, so a bill is read by the code that wrote it. -->
-        <cyclonedx-core-java.version>9.0.5</cyclonedx-core-java.version>
-        <exec-maven-plugin.version>3.5.1</exec-maven-plugin.version>
-        <error-prone.version>2.50.0</error-prone.version>
-        <nullaway.version>0.14.2</nullaway.version>
-        <logchange-maven-plugin.version>1.19.16</logchange-maven-plugin.version>
-        <bouncycastle.version>1.85.2</bouncycastle.version>
-        <sshj.version>0.40.0</sshj.version>
-        <!-- The JUnit BOM, imported below so that Jupiter, the platform and the suite engine are
-             one set rather than three guesses. The same set as sokar's build, because that is the
-             set Cucumber 7.34 is built against, and a test here and a test there should run on one. -->
-        <junit.version>5.14.2</junit.version>
+        <!-- The Java release, nothing published unless a module opts in - every module here does, the aggregator
+             does not - and the plugin and library versions come from sokar-parent. -->
         <!-- Late-replaced by surefire. Declared empty so '@{argLine}' resolves when JaCoCo,
              which normally sets this property, is not active. -->
         <argLine/>
+        <!-- One release of each library family the tools run with, where what they depend on brings an older one:
+             sshj brings bcpkix and bcutil 1.80 beside bcprov, CycloneDX the Jackson dataformats 2.17 beside the
+             Jackson the rest resolves. bcpkix and bcutil have no 1.85.2, so 1.85, bcprov's line. -->
+        <bouncycastle.pkix.version>1.85</bouncycastle.pkix.version>
+        <jackson.version>2.21.2</jackson.version>
     </properties>
 
     <modules>
@@ -122,6 +103,26 @@
                 <artifactId>bcprov-jdk18on</artifactId>
                 <version>${bouncycastle.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcpkix-jdk18on</artifactId>
+                <version>${bouncycastle.pkix.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcutil-jdk18on</artifactId>
+                <version>${bouncycastle.pkix.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-xml</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-yaml</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
 
             <!-- Nothing of sokar's: sokar's build runs these tools, so a dependency the other way made the two
                  impossible to release one after the other. -->
@@ -152,6 +153,12 @@
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>exec-maven-plugin</artifactId>
                     <version>${exec-maven-plugin.version}</version>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-help-plugin</artifactId>
+                    <version>${maven-help-plugin.version}</version>
                 </plugin>
 
                 <plugin>
@@ -200,64 +207,15 @@
             </plugin>
 
             <!-- NullAway makes a broken @NullMarked contract a compile error; main code only, tests pass null on purpose. -->
-            <!-- The lists append, so a module that adds a processor keeps these. -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>default-compile</id>
-                        <configuration>
-                            <compilerArgs combine.children="append">
-                                <arg>-XDcompilePolicy=simple</arg>
-                                <arg>--should-stop=ifError=FLOW</arg>
-                                <arg>-Xplugin:ErrorProne -XepDisableAllChecks -Xep:NullAway:ERROR -XepOpt:NullAway:OnlyNullMarked=true</arg>
-                            </compilerArgs>
-                            <annotationProcessorPaths combine.children="append">
-                                <path>
-                                    <groupId>com.google.errorprone</groupId>
-                                    <artifactId>error_prone_core</artifactId>
-                                    <version>${error-prone.version}</version>
-                                </path>
-                                <path>
-                                    <groupId>com.uber.nullaway</groupId>
-                                    <artifactId>nullaway</artifactId>
-                                    <version>${nullaway.version}</version>
-                                </path>
-                            </annotationProcessorPaths>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
 
             <!-- Resolved versions inline, so the parent and aggregator poms need not be
                  published. In the main build, not a release profile: what is installed is
                  then what is deployed. Pom modules are skipped, so aggregators keep theirs. -->
 
+            <!-- Every module flattened as sokar-parent manages it, so a published pom names no parent. -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>flatten-maven-plugin</artifactId>
-                <version>1.8.0</version>
-                <configuration>
-                    <flattenMode>oss</flattenMode>
-                    <updatePomFile>true</updatePomFile>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>flatten</id>
-                        <phase>process-resources</phase>
-                        <goals>
-                            <goal>flatten</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>flatten.clean</id>
-                        <phase>clean</phase>
-                        <goals>
-                            <goal>clean</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
 
         </plugins>

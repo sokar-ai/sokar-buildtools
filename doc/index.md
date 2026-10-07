@@ -9,7 +9,7 @@ may publish, and checks the native images and packages before they go out.
 | Artifact | What it does | Commands |
 |---|---|---|
 | `sokar-machines` | Rents test machines and the snapshots they boot from, runs acceptance legs on them, and installs the pinned GraalVM and musl toolchain in a build. A leg whose build is cancelled ends its suite and gives its machines back at once. | `sweep`, `snapshot`, `leg`, `acceptance`, `lease`, `deploy`, `jdk`, `musl` |
-| `sokar-release` | Checks that every workflow step is pinned by commit, that a repository's shared rules are copied byte for byte, that no page or source cites an issue in a way that goes stale, that every page of a documentation chapter is in its navigation once and every link on it can be followed, and that an agent's pinned CLI is the one its download names; records that CLI in the package's bill; moves named pins. | `check-actions`, `check-shared`, `check-citations`, `check-doc-site`, `check-pin`, `add-fetched-cli`, `compare-bills`, `update`, … |
+| `sokar-release` | Checks that every workflow step is pinned by commit, that a repository's shared rules are copied byte for byte, that no page or source cites an issue in a way that goes stale, that a release builds and packages with no snapshot, that every page of a documentation chapter is in its navigation once and every link on it can be followed, that every Maven module has a README linking its submodules, and that an agent's pinned CLI is the one its download names; records that CLI in the package's bill; moves named pins. | `check-actions`, `check-shared`, `check-citations`, `check-doc-site`, `check-readmes`, `check-releases`, `check-pin`, `add-fetched-cli`, `compare-bills`, `update`, … |
 | `sokar-ffm-check` | Checks that every downcall of the Foreign Function & Memory API a test made is registered for the native image. | run by `sokar`'s build |
 | `sokar-cpu-check` | Checks that a native image asks for no more than x86-64 v1, so it runs on any x86-64 CPU. | run by `sokar`'s build |
 | `sokar-package-check` | Checks the `.deb` and the `.rpm` against each other and against a real install. | run by `sokar`'s build |
@@ -38,6 +38,48 @@ writes: an SVG image's path data, a lock file's hashes. Build output is not read
 - **A whole file of such text** is named in `citations-exempt.txt` at the repository's root, one path per line,
   relative to the root, with `#` starting a comment; a path there that is not a committed file is refused, so the
   list cannot outlive what it exempts.
+
+## What `check-readmes` reads
+
+```
+sokar-release check-readmes [REPOSITORY ROOT, default .]
+```
+
+The reactor from the root `pom.xml` down, through every `<module>`, a profile's included, since a module only a
+profile builds is a module all the same. Each module directory must hold a `README.md`, and a module with submodules
+must link each of them in it - to its directory or to its `README.md`; a name in a code span is no link. Every fault is
+named; a root without a `pom.xml` is refused, never passed as an empty walk.
+
+## What `check-releases` reads
+
+The effective pom Maven writes, taken on a release tag before the build:
+
+```
+./mvnw -B -s settings.xml help:effective-pom -Doutput=target/effective-pom.xml
+sokar-release check-releases target/effective-pom.xml --requires org.fuin.sokar:sokar-release
+```
+
+So what is checked is what Maven resolved: every property interpolated, an imported BOM's versions merged in, plugins
+and the dependencies they run with. A release depends only on releases, so every `-SNAPSHOT` it names is refused and
+named with where it was found - parent, dependency, managed dependency, plugin, a plugin's dependency, extension. The
+enforcer's rule for release dependencies does not look at a plugin's dependencies, and the Sokar tools are exactly
+those.
+
+- **The repository's own modules are outside the rule**: the same run builds them, and a repository whose Maven version
+  is never published (`0-SNAPSHOT`, where another file carries the package version) is not refused for it. The tag's
+  own version is checked where the release names its channel.
+- **A profile that is not active is read too**: the effective pom keeps its declarations, and a snapshot named there is
+  refused as well.
+- **Write the effective pom with the profiles the release build uses**: a module a profile adds - a `.deb` or `.rpm`
+  module under `dist` - is in the file only when the profile was active. A profile's module the file does not hold is
+  refused, naming the profile to add.
+- **`--requires GROUP:ARTIFACT`**, given once per artifact, refuses an effective pom that does not name it, and one that
+  names no artifact at all is refused always - so a file written from the wrong directory fails rather than passes.
+- **A published pom names no parent**: a module that opts in to Central - `skipPublishing` or `maven.deploy.skip`
+  `false`, on `central-publishing-maven-plugin` or `maven-deploy-plugin` where the module sets it there, as a BOM does
+  since its properties are published with it, else as the property - is refused unless `flatten-maven-plugin` flattens its pom in a mode that leaves the parent out (`oss`,
+  `ossrh`, `defaults`, `bom`) and no `pomElements` keeps it. A consumer then needs the module alone, and the root and
+  grouping modules stay unpublished.
 
 ## How a repository takes them
 

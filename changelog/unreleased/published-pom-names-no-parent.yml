@@ -1,0 +1,2 @@
+title: sokar-release check-releases refuses a module published to Central whose pom would still name its parent, since nothing flattens it or its flatten mode keeps the parent
+type: added

@@ -1,0 +1,2 @@
+title: sokar-release check-releases accepts a published pom that has no parent, as the parent pom itself is
+type: changed

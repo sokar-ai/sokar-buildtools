@@ -1,0 +1,2 @@
+title: sokar-release check-readmes refuses a Maven module without a README.md beside its pom.xml, and a README that does not link each of its submodules, walking the reactor from the root, profiles included
+type: added

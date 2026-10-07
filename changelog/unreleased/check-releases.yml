@@ -1,0 +1,2 @@
+title: sokar-release check-releases refuses a release that builds or packages with a snapshot, reading what Maven resolved in the effective pom, a plugin's dependencies included
+type: added

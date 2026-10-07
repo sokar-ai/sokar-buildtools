@@ -264,7 +264,7 @@ public final class Snapshots {
                         + " PATH=" + GRAALVM_HOME + "/bin:$PATH "
                         // sokar's settings.xml, where the build tooling's snapshots come from.
                         + "./mvnw -B -s settings.xml -Pnative -DskipTests package "
-                        + "-pl app,daemon,hooks,agents/stub -am'", null);
+                        + "-pl app,daemon,hooks,agents/stub" + Leg.BUILD_STUB_MODULE + " -am'", null);
                 if ("fedora".equals(os)) {
                     // Compiled here rather than shipped compiled - a .pp is tied to the policy
                     // version of the machine that built it - and while the checkout is still

@@ -34,6 +34,20 @@
             <version>${cyclonedx-core-java.version}</version>
         </dependency>
 
+        <!-- Declared, so the flattened pom carries them: CycloneDX alone would bring 2.17 beside the Jackson the rest
+             resolves. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-xml</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.fuin.sokar</groupId>
             <artifactId>sokar-json</artifactId>
@@ -80,6 +94,28 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
+            </plugin>
+            <!-- A release builds and packages with no snapshot: on a tag, after 'install' and
+                 'help:effective-pom -Doutput=target/effective-pom.xml' for the whole reactor, run as
+                 '-pl release exec:java@check-releases' - the check that ships is the one that checks it. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>check-releases</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>org.fuin.sokar.release.Main</mainClass>
+                            <arguments>
+                                <argument>check-releases</argument>
+                                <argument>${maven.multiModuleProjectDirectory}/target/effective-pom.xml</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

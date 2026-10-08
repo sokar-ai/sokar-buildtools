@@ -115,6 +115,21 @@
                             </arguments>
                         </configuration>
                     </execution>
+                    <!-- The deploy dry run of every push, read: '-pl release exec:java@check-deploy' after the dry run
+                         wrote target/deploy-dry-run.log. -->
+                    <execution>
+                        <id>check-deploy</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>org.fuin.sokar.release.Main</mainClass>
+                            <arguments>
+                                <argument>check-deploy</argument>
+                                <argument>${maven.multiModuleProjectDirectory}/target/deploy-dry-run.log</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>

@@ -1,0 +1,2 @@
+title: sokar-release check-deploy reads a deploy dry run's log and refuses a module deployed without the publishing plugin, or an upload aimed off the machine
+type: added

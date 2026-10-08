@@ -39,6 +39,18 @@ jobs:
       - name: Build and unit tests
         run: ./mvnw -B verify -s settings.xml
 
+      # The deploy a tag runs, on every push, with both upload URLs at a port on this runner where nothing listens:
+      # every module must go through the publishing plugin and nothing may leave the machine. Its upload failing
+      # against the dead port is expected; check-deploy, from this commit, reads the log.
+      - name: Deploy dry run
+        run: |
+          set -u
+          mkdir -p target
+          ./mvnw -B -s settings.xml deploy -Pcentral-sonatype-release -Dgpg.skip -DskipTests \
+              -DcentralBaseUrl=http://127.0.0.1:9 -DcentralSnapshotsUrl=http://127.0.0.1:9/ \
+              > target/deploy-dry-run.log 2>&1 || true
+          ./mvnw -B -q -s settings.xml -pl release exec:java@check-deploy
+
   # Only when a change that landed on main moved what a snapshot is made of - the pom changes for
   # other reasons too. The legs of every Sokar repository boot the newest snapshot, so this is where
   # they are rebuilt: here, where the pins are.

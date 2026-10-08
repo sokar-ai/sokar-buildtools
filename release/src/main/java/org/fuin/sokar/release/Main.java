@@ -23,7 +23,7 @@ public final class Main {
     /** The commands this build knows, named in the refusal of one it does not. */
     static final List<String> COMMANDS = List.of("compare-bills", "add-fetched-cli", "add-component",
             "merge-tree-bill", "upstream-version", "update", "check-pin", "check-actions", "check-shared",
-            "check-citations", "check-doc-site", "check-releases", "check-readmes");
+            "check-citations", "check-doc-site", "check-releases", "check-readmes", "check-deploy");
 
     private Main() {
         throw new UnsupportedOperationException("Utility class");
@@ -114,6 +114,9 @@ public final class Main {
             case "check-readmes" -> rest.size() > 1
                     ? usage(err, "check-readmes [REPOSITORY ROOT, default .]")
                     : new CheckReadmes(out, err).check(Path.of(rest.isEmpty() ? "." : rest.getFirst()));
+            case "check-deploy" -> rest.size() != 1
+                    ? usage(err, "check-deploy DEPLOY-LOG")
+                    : new CheckDeploy(out, err).check(Path.of(rest.getFirst()));
             default -> unknown(command, err);
         };
     }

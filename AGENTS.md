@@ -37,7 +37,7 @@ The build and test tooling the Sokar repositories share, published to Central as
 
 ## Shared across the Sokar repositories
 
-> **BEGIN Shared Area** · sha256 `9c925595a1441fef` · changed 2026-10-07T09:00Z
+> **BEGIN Shared Area** · sha256 `07ac9925c20b6fd9` · changed 2026-10-08T06:49Z
 
 Identical in every repository `project.yml` names but `sokar-parent`, which holds only the parent pom
 and no `AGENTS.md`. The markers carry the SHA-256 of the lines between them (the first 16 hex digits)
@@ -86,6 +86,8 @@ and the UTC time that text last changed; change it in the channel first, never i
   repaired by a new commit on the remote's tip, never by a force push.
 - **A commit message is one brief line saying in words what changed**, never by a requirement number;
   the reasoning goes into an issue or a decision.
+- **No commit message, changelog entry, issue or document says who asked for a change or who made it**
+  - no "as the operator chose", no agent's name; it says what changed and why.
 - **A change to what ships or builds gets its changelog entry in the same commit**, under
   `[Unreleased]` and the heading of its kind. A generated changelog is changed only through its
   sources, never by hand.
@@ -240,12 +242,14 @@ and the UTC time that text last changed; change it in the channel first, never i
 - **A comment says why, never what, in one line where it can.** Reasoning that does not fit goes into
   documentation or a decision, and a small named method is preferred over a comment explaining a
   block.
-- **Dot files are not committed.** `.gitignore` ignores `.*` and excepts only what a build needs - in
-  a Java repository `.github`, `.mvn`, `.gitignore` and `.gitkeep` - and what is true of one machine
-  goes into `.AGENTS.md`.
-- **A Java repository builds, checks and tests with Java and Maven only.** A file that cannot be
-  Java - `mvnw`, or a script that runs where there is no Java yet - is named in its repository's own
-  part with the reason, and no repository keeps a copy of a helper another one has.
+- **Dot files are not committed.** `.gitignore` ignores `.*` and excepts only what a build needs -
+  `.github`, `.gitignore` and `.gitkeep`, in a Maven repository also `.mvn` - and what is true of one
+  machine goes into `.AGENTS.md`.
+- **Maven is the build system: a Java repository builds, checks and tests with Java and Maven only.**
+  Another build tool only where the platform a repository builds for supports no other - an IntelliJ
+  plugin, since JetBrains supports only Gradle - named with the reason in its repository's own part. A
+  file that cannot be Java - `mvnw`, or a script that runs where there is no Java yet - is named in its
+  repository's own part with the reason, and no repository keeps a copy of a helper another one has.
 - **Maven modules that belong together - the layers of one program, its packages - are submodules of
   one module of packaging `pom` named for what they share**, so the root lists parts, not pieces.
   Grouping changes only `parent` and `relativePath`, never a `groupId` or `artifactId`.
@@ -268,12 +272,12 @@ and the UTC time that text last changed; change it in the channel first, never i
   first of two writers must win, publish with `Files.createLink` (`link(2)`), which fails on an
   existing name.
 - **Java code carries brief Javadoc on every public type and method; a test method's name reads as a
-  sentence (never `testXxx`) and an assertion states its reason (`.as(...)`).** Every Maven call in
-  CI passes `-s settings.xml`.
+  sentence (never `testXxx`) and an assertion states its reason (`.as(...)`).** Every build call in
+  CI names its repositories in the repository itself (Maven: `-s settings.xml`).
 - **Everything a build runs is pinned and moved only by review**: actions by commit with the version
-  beside it, the JDK (from `sokar-machines jdk --github`), Maven and images by version and digest,
-  updated by Dependabot weekly, in one group, after three days. `sokar-release check-actions`
-  enforces it.
+  beside it, the JDK (from `sokar-machines jdk --github`), the build tool's wrapper (Maven, Gradle) and
+  images by version and digest, updated by Dependabot weekly, in one group, after three days.
+  `sokar-release check-actions` enforces it.
 - **While it is developed, a repository may build against another Sokar repository's snapshot from
   Sonatype**, and its build may fail for a while when that snapshot moves; a release depends only on
   releases, which the release build checks.
@@ -285,4 +289,4 @@ and the UTC time that text last changed; change it in the channel first, never i
 - **Every native executable is built with `-march=x86-64`**, so it starts on any x86-64 CPU, and the
   build checks each executable for exactly that instruction set.
 
-> **END Shared Area** · sha256 `9c925595a1441fef`
+> **END Shared Area** · sha256 `07ac9925c20b6fd9`

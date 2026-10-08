@@ -14,7 +14,7 @@ class LibrarySetsTest {
     @Test
     void bouncyCastlesProviderPkixAndUtilAreOneRelease() throws ClassNotFoundException {
 
-        // Agent Frontend, 2026-10-07: bcprov 1.85.2 beside bcpkix 1.80 and bcutil 1.80.2 - sshj brought the older two.
+        // A set had bcprov 1.85.2 beside bcpkix 1.80 and bcutil 1.80.2 - sshj brought the older two.
         final String provider = release("org.bouncycastle.jce.provider.BouncyCastleProvider");
 
         assertThat(release("org.bouncycastle.cert.X509CertificateHolder")).as("bcpkix beside bcprov %s", provider)

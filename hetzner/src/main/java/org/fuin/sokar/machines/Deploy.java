@@ -191,6 +191,12 @@ final class Deploy {
             }
         }
 
+        // The build readers a handover carries beside the packages - builds/github, builds/stub-forge - for the account
+        // alone, under the names Sokar finds them by; left out, each walk needed them put in by hand.
+        if (scope == Scope.ACCOUNT && !installReaders(repository.resolve("builds"), remote, out)) {
+            return 1;
+        }
+
         // Without it systemd stops everything the user owns at their last logout, conmon included,
         // and every task dies with exit 143. A rented machine gets this at creation; a kept one here.
         if (!must(remote, lingerCommand(user), out)) {
@@ -349,6 +355,35 @@ final class Deploy {
             throw new IOException("cannot make a directory to stage the package in: " + made.all().strip());
         }
         return directory;
+    }
+
+    private static boolean installReaders(Path builds, Remote remote, PrintStream out) throws IOException {
+        if (!Files.isDirectory(builds)) {
+            return true;
+        }
+        final List<Path> readers;
+        try (java.util.stream.Stream<Path> files = Files.list(builds)) {
+            readers = files.filter(Files::isRegularFile).filter(Files::isExecutable).sorted().toList();
+        }
+        if (readers.isEmpty()) {
+            return true;
+        }
+        final String staging = staging(remote);
+        try {
+            for (final Path reader : readers) {
+                final String name = reader.getFileName().toString();
+                say(out, "installing the build reader '" + name + "'");
+                final String remoteReader = staging + "/" + name;
+                remote.upload(reader, remoteReader);
+                if (!must(remote, "install -D -m 0755 " + AgentLeg.quote(remoteReader)
+                        + " \"$HOME/.local/share/sokar/builds/" + name + "\"", out)) {
+                    return false;
+                }
+            }
+            return true;
+        } finally {
+            remote.run("rm -rf " + AgentLeg.quote(staging));
+        }
     }
 
     private static boolean installStub(Path stub, String staging, Remote remote, PrintStream out) throws IOException {

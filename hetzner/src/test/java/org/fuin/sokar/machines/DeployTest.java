@@ -318,6 +318,29 @@ class DeployTest {
     }
 
     @Test
+    void theBuildReadersAHandoverCarriesGoIntoTheAccountToo() throws IOException {
+
+        // A handover's builds/github and builds/stub-forge were left out, and each walk had them put in by hand.
+        final Path deb = deb();
+        final Path builds = Files.createDirectories(repository.resolve("builds"));
+        for (final String reader : java.util.List.of("github", "stub-forge")) {
+            Files.writeString(builds.resolve(reader), "");
+            builds.resolve(reader).toFile().setExecutable(true);
+        }
+        Files.writeString(builds.resolve("README.md"), "not a reader");
+        accountRunsItsOwn();
+
+        assertThat(Deploy.deploy("core@host", repository, "7.1", true, Deploy.Scope.ACCOUNT, machine, run -> 0, out))
+                .as(text()).isZero();
+
+        assertThat(machine.uploads).containsKeys(builds.resolve("github"), builds.resolve("stub-forge"))
+                .doesNotContainKey(builds.resolve("README.md"));
+        assertThat(machine.commands).anyMatch(command -> command.contains("install -D -m 0755")
+                && command.contains("\"$HOME/.local/share/sokar/builds/github\""))
+                .anyMatch(command -> command.contains("\"$HOME/.local/share/sokar/builds/stub-forge\""));
+    }
+
+    @Test
     void refusesToStageInADirectoryItDidNotMake() {
         machine.answer("mktemp -d", "/tmp/somebody-elses\n");
 

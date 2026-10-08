@@ -217,6 +217,21 @@ final class CheckActions {
             faults.add(".mvn/wrapper/maven-wrapper.properties: no distributionSha256Sum, so the Maven mvnw downloads"
                     + " is not checked against its digest");
         }
+        // The Gradle a Gradle repository downloads, held as Maven's is: a version of its own, and its digest.
+        final Path gradle = directory.toAbsolutePath().getParent() == null ? null
+                : directory.toAbsolutePath().getParent().resolve("gradle/wrapper/gradle-wrapper.properties");
+        if (gradle != null && Files.isRegularFile(gradle)) {
+            final String properties = Files.readString(gradle, StandardCharsets.UTF_8);
+            if (!properties.contains("distributionSha256Sum=")) {
+                faults.add("gradle/wrapper/gradle-wrapper.properties: no distributionSha256Sum, so the Gradle gradlew"
+                        + " downloads is not checked against its digest");
+            }
+            if (!java.util.regex.Pattern.compile("(?m)^distributionUrl=.*/gradle-\\d+(\\.\\d+)+-(bin|all)\\.zip\\s*$")
+                    .matcher(properties).find()) {
+                faults.add("gradle/wrapper/gradle-wrapper.properties: its distributionUrl names no version, so what it"
+                        + " downloads can change under the same name");
+            }
+        }
         return faults;
     }
 

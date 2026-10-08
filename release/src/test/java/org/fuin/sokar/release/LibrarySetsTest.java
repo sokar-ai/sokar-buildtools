@@ -13,7 +13,7 @@ class LibrarySetsTest {
     @Test
     void jacksonsCoreDatabindAndTheDataformatsTheBillsAreReadWithAreOneRelease() {
 
-        // Agent Sluice, 2026-10-07: jackson-core and -databind 2.21.2 beside dataformat-xml 2.17.2 and -yaml 2.17.1.
+        // A set had jackson-core and -databind 2.21.2 beside dataformat-xml 2.17.2 and -yaml 2.17.1.
         // A Version is equal only within one artifact, so the release is compared as it is written.
         final String databind = com.fasterxml.jackson.databind.cfg.PackageVersion.VERSION.toString();
 

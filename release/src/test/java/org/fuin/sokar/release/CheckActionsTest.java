@@ -214,6 +214,35 @@ class CheckActionsTest {
     }
 
     @Test
+    void refusesAGradleWrapperWithoutItsDigestOrAVersion() throws IOException {
+
+        // The one repository built with Gradle downloads its build tool as Maven's wrapper does, and is held to the
+        // same pin.
+        final Path repository = directory.resolve("repo");
+        final Path github = Files.createDirectories(repository.resolve(".github/workflows"));
+        Files.writeString(github.resolve("ci.yml"), "      - uses: ./.github/actions/x\n");
+        Files.writeString(repository.resolve(".github/dependabot.yml"), "updates:\n  - package-ecosystem: github-actions\n"
+                + "    cooldown:\n      default-days: 3\n    groups:\n      a:\n        patterns: [\"*\"]\n");
+        final Path properties = Files.createDirectories(repository.resolve("gradle/wrapper"))
+                .resolve("gradle-wrapper.properties");
+        Files.writeString(properties, "distributionUrl=https\\://services.gradle.org/distributions/gradle-9.8.0-bin.zip\n");
+
+        assertThat(check(repository.resolve(".github"))).isEqualTo(Stop.REFUSED);
+        assertThat(stderr()).contains("gradle-wrapper.properties").contains("no distributionSha256Sum");
+
+        Files.writeString(properties, "distributionUrl=https\\://services.gradle.org/distributions/gradle-latest.zip\n"
+                + "distributionSha256Sum=" + "a".repeat(64) + "\n");
+        err.reset();
+        assertThat(check(repository.resolve(".github"))).isEqualTo(Stop.REFUSED);
+        assertThat(stderr()).contains("names no version");
+
+        Files.writeString(properties, "distributionUrl=https\\://services.gradle.org/distributions/gradle-9.8.0-bin.zip\n"
+                + "distributionSha256Sum=" + "a".repeat(64) + "\n");
+        err.reset();
+        assertThat(check(repository.resolve(".github"))).as(stderr()).isEqualTo(0);
+    }
+
+    @Test
     void refusesAWorkflowThatAForkCanTriggerWithTheSecrets() throws IOException {
         // pull_request_target runs with this repository's secrets on an event a fork's pull request raises.
         workflow("on:\n  push:\n  pull_request_target:\n    types: [opened]\njobs:\n  a:\n    runs-on: ubuntu-latest\n"

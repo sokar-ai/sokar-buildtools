@@ -1,0 +1,2 @@
+title: "sokar-release check-actions holds a Gradle Wrapper as it holds Maven's: a distributionUrl with a version and a distributionSha256Sum"
+type: added

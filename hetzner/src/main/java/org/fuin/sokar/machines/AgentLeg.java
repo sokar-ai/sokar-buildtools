@@ -387,7 +387,7 @@ public final class AgentLeg {
      * @param value What to quote.
      * @return The value, single quoted.
      */
-    static String quote(String value) {
+    public static String quote(String value) {
         return "'" + value.replace("'", "'\\''") + "'";
     }
 

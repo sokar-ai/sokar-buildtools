@@ -1,0 +1,2 @@
+title: sokar-machines no longer has the leg and deploy commands; sokar keeps them in its own tree, since they know its module layout
+type: removed

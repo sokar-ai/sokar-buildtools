@@ -59,17 +59,11 @@ public final class Main {
         if (args.length > 0 && "snapshot".equals(args[0])) {
             return snapshot(args, complain, open);
         }
-        if (args.length > 0 && "leg".equals(args[0])) {
-            return leg(args, complain, open);
-        }
         if (args.length > 0 && "acceptance".equals(args[0])) {
             return acceptance(args, complain, open);
         }
         if (args.length > 0 && "lease".equals(args[0])) {
             return lease(args, complain, open);
-        }
-        if (args.length > 0 && "deploy".equals(args[0])) {
-            return deploy(args, complain);
         }
         if (args.length > 0 && "jdk".equals(args[0])) {
             return jdk(args, complain, System.getenv(), PinnedJdk.overHttps());
@@ -83,27 +77,19 @@ public final class Main {
             // asking for, and a bare usage dump reads as a mistake in the workflow rather than
             // as tooling that has not caught up.
             complain.accept("unknown command '" + args[0] + "'. This build of the tooling knows"
-                    + " sweep, snapshot, leg, acceptance, lease, deploy, jdk and musl - if you expected another, it is"
+                    + " sweep, snapshot, acceptance, lease, jdk and musl - if you expected another, it is"
                     + " older than the caller.");
         }
         if (args.length == 0 || !"sweep".equals(args[0])) {
             System.err.println("""
                 Usage: sweep [--mine | --from <file>] [--now] [--older-than <minutes>]
                        snapshot --os <ubuntu|fedora> [--key <file>] [--repo <dir>] [--type <t>]
-                       leg      --os <ubuntu|fedora> --repo <dir> [--key <file>] [--keep]
-                                [--fetch <dir>] [--acceptance] [--type <t,t...>] [--accounts <n>]
                        acceptance (--package <p> | --candidate <dir>) (--script <f> | --cucumber <dir>)
                                 [--os <o>] [--type <t,t...>] [--keep] [--accounts <n>]
                        lease    --os <ubuntu|fedora> [--key <file>] [--write <file>] [--candidate <dir>]
                                 [--type <t>] - rents a machine, installs Sokar, starts the
                                 daemon as an unprivileged user, and leaves it running. What
                                 deletes it is 'sweep --mine'.
-                       deploy   --vm <user@host> --key <file> [--repo <dir>] [--skip-build]
-                                [--run <n>] [--account] - builds here and installs on a machine
-                                somebody keeps, with lingering on and the daemon restarted. --vm
-                                and --key default to SOKAR_VM and SOKAR_VM_KEY. --account installs
-                                into that user's own directories only, changing nothing any other
-                                account runs.
                        jdk      [--into <dir>] [--github] - installs the GraalVM the CI snapshots
                                 pin, checked against its digest, into <dir> (default: a directory
                                 under RUNNER_TEMP). --github makes it JAVA_HOME and puts it on the
@@ -465,73 +451,6 @@ public final class Main {
         return 0;
     }
 
-    private static int deploy(String[] args, Consumer<String> complain) throws IOException {
-        String vm = System.getenv("SOKAR_VM");
-        String key = System.getenv("SOKAR_VM_KEY");
-        String repo = ".";
-        String run = System.getenv("SOKAR_SNAPSHOT_RUN");
-        boolean skipBuild = false;
-        Deploy.Scope scope = Deploy.Scope.MACHINE;
-        for (int at = 1; at < args.length; at++) {
-            switch (args[at]) {
-                case "--account" -> scope = Deploy.Scope.ACCOUNT;
-                case "--vm" -> vm = value(args, ++at);
-                case "--key" -> key = value(args, ++at);
-                case "--repo" -> repo = value(args, ++at);
-                case "--run" -> run = value(args, ++at);
-                case "--skip-build" -> skipBuild = true;
-                default -> {
-                    complain.accept("unknown option: " + args[at]);
-                    return 2;
-                }
-            }
-        }
-        if (vm == null || !vm.contains("@") || key == null || repo == null) {
-            complain.accept("deploy needs --vm <user@host> and --key <file>, or SOKAR_VM and SOKAR_VM_KEY");
-            return 2;
-        }
-        final java.nio.file.Path root = java.nio.file.Path.of(repo).toAbsolutePath().normalize();
-        final String user = vm.substring(0, vm.indexOf('@'));
-        final String host = vm.substring(vm.indexOf('@') + 1);
-        try (Ssh ssh = Ssh.to(host, user, new Credential.InFile(java.nio.file.Path.of(key)))) {
-            final Deploy.Remote remote = new Deploy.Remote() {
-                @Override
-                public Ssh.Output run(String command) throws IOException {
-                    return ssh.run(command);
-                }
-
-                @Override
-                public void upload(java.nio.file.Path local, String target) throws IOException {
-                    ssh.upload(local, target);
-                }
-            };
-            return Deploy.deploy(vm, root, run == null || run.isBlank() ? null : run, skipBuild, scope, remote,
-                    number -> build(root, number), System.out);
-        }
-    }
-
-    /**
-     * Builds the packages CI would publish, with the profiles CI uses and a run number of our own.
-     *
-     * @param root The repository.
-     * @param run The run number.
-     * @return The build's exit code.
-     * @throws IOException If it could not be started.
-     */
-    private static int build(java.nio.file.Path root, String run) throws IOException {
-        // -s settings.xml as in CI: the build tooling's snapshots come from there, not from a person's own settings.
-        final Process maven = new ProcessBuilder(root.resolve("mvnw").toString(), "-B", "-s", "settings.xml",
-                "-Pnative,dist", "verify",
-                "-DskipTests", "-Dsokar.snapshot.run=" + run).directory(root.toFile()).inheritIO().start();
-        try {
-            return maven.waitFor();
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            maven.destroy();
-            throw new IOException("interrupted while building", ex);
-        }
-    }
-
     /**
      * Returns an option's value, which is the next word.
      * <p>
@@ -576,64 +495,6 @@ public final class Main {
             throw new IOException("interrupted archiving the working tree", ex);
         }
         return archive;
-    }
-
-    /**
-     * Runs one test leg against a rented machine.
-     *
-     * @param args The command line.
-     * @param open Where to rent it.
-     * @return An exit code.
-     * @throws IOException If the leg fails.
-     */
-    private static int leg(String[] args, Consumer<String> complain,
-            Supplier<Hetzner> open) throws IOException {
-        String os = null;
-        String key = null;
-        String repo = null;
-        String into = null;
-        boolean keep = false;
-        boolean acceptance = false;
-        String types = null;
-        int accounts = 1;
-        for (int at = 1; at < args.length; at++) {
-            switch (args[at]) {
-                case "--os" -> os = value(args, ++at);
-                case "--key" -> key = value(args, ++at);
-                case "--repo" -> repo = value(args, ++at);
-                case "--keep" -> keep = true;
-                case "--fetch" -> into = value(args, ++at);
-                // Features beside each other, one account each; 1 runs them in order, as always.
-                case "--accounts" -> {
-                    final String count = value(args, ++at);
-                    if (!count.matches("[1-9]\\d?")) {
-                        complain.accept("--accounts needs a number from 1 to 99, not " + count);
-                        return 2;
-                    }
-                    accounts = Integer.parseInt(count);
-                }
-                case "--acceptance" -> acceptance = true;
-                // Which types to rent, in the order to try them - for comparing one against the default
-                // without changing it for every repository that rents the same machines.
-                case "--type" -> types = value(args, ++at);
-                default -> {
-                    complain.accept("unknown option: " + args[at]);
-                    return 2;
-                }
-            }
-        }
-        if (os == null || repo == null) {
-            complain.accept("leg needs --os and --repo");
-            return 2;
-        }
-        try (Hetzner hetzner = open.get()) {
-            Leg.run(hetzner, os, types == null ? Spec.DEFAULT_TYPES : Spec.order(types), Credential.of(System.getenv(SSH_KEY),
-                    key == null ? null : java.nio.file.Path.of(key)),
-                    archiveOf(java.nio.file.Path.of(repo)), keep,
-                    into == null ? null : java.nio.file.Path.of(into),
-                    acceptance ? java.nio.file.Path.of(repo) : null, accounts);
-        }
-        return 0;
     }
 
     /**

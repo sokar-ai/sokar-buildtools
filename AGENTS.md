@@ -4,8 +4,9 @@
 
 The build and test tooling the Sokar repositories share, published to Central as `org.fuin.sokar` artifacts:
 
-- `hetzner/` - **sokar-machines**: renting test machines, the snapshots they boot from, the acceptance legs on
-  them, `deploy`, and the pinned GraalVM a CI job installs.
+- `hetzner/` - **sokar-machines**: renting test machines, the snapshots they boot from, the agent repositories'
+  acceptance legs on them, and the pinned GraalVM a CI job installs. `sokar`'s own leg and the deploy of a handover
+  live in `sokar` (`acceptance/legs`): they know its module layout, which no released tool may.
 - `release/` - **sokar-release**: release and pin checks - what an agent package may publish without a person,
   moving a named pin, `check-actions` and `check-shared`.
 - `ffm-check/` - **sokar-ffm-check**: every FFM downcall a test makes is registered for the native image.
@@ -15,8 +16,7 @@ The build and test tooling the Sokar repositories share, published to Central as
 - **It depends on nothing of `sokar`'s, and is given a `sokar` checkout's path wherever a tool works on one.**
   `sokar`'s build runs these tools, so a dependency the other way made the two impossible to release one after the
   other: the JSON reader is this repository's own `sokar-json`, and `sokar-release` reads an agent definition's pin
-  from its YAML itself. `UnitPropertiesTest` reads `../../sokar` or `-Dsokar.checkout=<path>` and
-  is skipped without one.
+  from its YAML itself.
 - **Build:** `JAVA_HOME=<the pinned GraalVM> ./mvnw -B -s settings.xml clean verify`; `settings.xml` is also where
   `sokar`'s snapshot libraries resolve from.
 - **What a CI leg's snapshot is made of is pinned in `hetzner/pom.xml` and filtered into `machines.properties`**, so

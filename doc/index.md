@@ -8,8 +8,8 @@ may publish, and checks the native images and packages before they go out.
 
 | Artifact | What it does | Commands |
 |---|---|---|
-| `sokar-machines` | Rents test machines and the snapshots they boot from, runs acceptance legs on them, and installs the pinned GraalVM and musl toolchain in a build. A leg whose build is cancelled ends its suite and gives its machines back at once. | `sweep`, `snapshot`, `leg`, `acceptance`, `lease`, `deploy`, `jdk`, `musl` |
-| `sokar-release` | Checks that every workflow step is pinned by commit, that a repository's shared rules are copied byte for byte, that no page or source cites an issue in a way that goes stale, that a release builds and packages with no snapshot, that every page of a documentation chapter is in its navigation once and every link on it can be followed, that every Maven module has a README linking its submodules, and that an agent's pinned CLI is the one its download names; records that CLI in the package's bill; moves named pins. | `check-actions`, `check-shared`, `check-citations`, `check-doc-site`, `check-readmes`, `check-releases`, `check-pin`, `add-fetched-cli`, `compare-bills`, `update`, … |
+| `sokar-machines` | Rents test machines and the snapshots they boot from, runs the agent repositories' acceptance legs on them, and installs the pinned GraalVM and musl toolchain in a build. A leg whose build is cancelled ends its suite and gives its machines back at once. A snapshot proves itself by building `sokar` with the tree's own `ci/leg-build.sh`. | `sweep`, `snapshot`, `acceptance`, `lease`, `jdk`, `musl` |
+| `sokar-release` | Checks that every workflow step is pinned by commit, that a repository's shared rules are copied byte for byte, that no page or source cites an issue in a way that goes stale, that a release builds and packages with no snapshot, that a deploy dry run went through the publishing plugin in every module and sent nothing off the machine, that every page of a documentation chapter is in its navigation once and every link on it can be followed, that every Maven module has a README linking its submodules, and that an agent's pinned CLI is the one its download names; records that CLI in the package's bill; moves named pins. | `check-actions`, `check-shared`, `check-citations`, `check-doc-site`, `check-readmes`, `check-releases`, `check-deploy`, `check-pin`, `add-fetched-cli`, `compare-bills`, `update`, … |
 | `sokar-ffm-check` | Checks that every downcall of the Foreign Function & Memory API a test made is registered for the native image. | run by `sokar`'s build |
 | `sokar-cpu-check` | Checks that a native image asks for no more than x86-64 v1, so it runs on any x86-64 CPU. | run by `sokar`'s build |
 | `sokar-package-check` | Checks the `.deb` and the `.rpm` against each other and against a real install. | run by `sokar`'s build |
@@ -49,6 +49,29 @@ The reactor from the root `pom.xml` down, through every `<module>`, a profile's 
 profile builds is a module all the same. Each module directory must hold a `README.md`, and a module with submodules
 must link each of them in it - to its directory or to its `README.md`; a name in a code span is no link. Every fault is
 named; a root without a `pom.xml` is refused, never passed as an empty walk.
+
+## What `check-deploy` reads
+
+The log of the deploy a tag runs, run on every push with both of the publishing plugin's upload URLs at a port on the
+runner where nothing listens:
+
+```
+./mvnw -B -s settings.xml deploy -Pcentral-sonatype-release -Dgpg.skip -DskipTests \
+    -DcentralBaseUrl=http://127.0.0.1:9 -DcentralSnapshotsUrl=http://127.0.0.1:9/ > target/deploy-dry-run.log 2>&1
+sokar-release check-deploy target/deploy-dry-run.log
+```
+
+The upload failing against the dead port is expected. Refused, each named:
+
+- **a module deployed by `default-deploy`**: the release profile's publishing plugin did not reach it as an extension,
+  so the real deploy fails there with "repository element was not specified";
+- **a module where `injected-central-publishing` never ran**;
+- **an upload aimed at any host but the loopback address**: both URLs must be set, since a snapshot goes to
+  `centralSnapshotsUrl` and a release to `centralBaseUrl`, and a dry run must not be able to publish;
+- **a run offline**, where the plugin skips its goal and proves nothing.
+
+So a tag's deploy repeats what `main` already did, rather than being the first time the release profile meets the
+build.
 
 ## What `check-releases` reads
 

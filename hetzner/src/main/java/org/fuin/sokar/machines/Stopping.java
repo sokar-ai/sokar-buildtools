@@ -20,7 +20,7 @@ import java.util.function.IntConsumer;
  * further step reaches a machine about to be deleted. The cleanup a workflow runs afterwards stays, for a leg killed
  * too hard to do this.
  */
-final class Stopping implements AutoCloseable {
+public final class Stopping implements AutoCloseable {
 
     /** The exit code of a leg that was cancelled, as a shell reports an end by SIGINT. */
     static final int CANCELLED = 130;
@@ -49,7 +49,7 @@ final class Stopping implements AutoCloseable {
      * @param lease The machine to give back on a cancel.
      * @return What stops it; closing it ends the watch.
      */
-    static Stopping on(Lease lease) {
+    public static Stopping on(Lease lease) {
         return new Stopping(ancestors(), () -> stop(lease::close), System::exit, LOOK);
     }
 

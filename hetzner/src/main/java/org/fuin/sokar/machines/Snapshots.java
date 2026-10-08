@@ -59,6 +59,18 @@ public final class Snapshots {
     private static final String GRAALVM_HOME = "/opt/graalvm";
 
     /**
+     * How the product is built once to prove an image can: the tree's own {@code ci/leg-build.sh}, which knows its
+     * module layout, so a regrouping there needs no release here. A tree from before the script gets the module list
+     * it had, with the app where that tree keeps it. Shell, run from the checkout with the JDK on the PATH; no single
+     * quote, since it is passed inside one.
+     */
+    static final String TREE_BUILD = "if [ -f ci/leg-build.sh ]; then sh ci/leg-build.sh; "
+            // sokar's settings.xml, where the build tooling's snapshots come from.
+            + "else ./mvnw -B -s settings.xml -Pnative -DskipTests package "
+            + "-pl $(test -d apps/app && echo apps/app || echo app),daemon,hooks,agents/stub"
+            + "$(test -d builds/stub && echo ,builds/stub) -am; fi";
+
+    /**
      * What a snapshot is made of, as the pom pins it: the JDK a leg builds with and the base images every
      * task starts from.
      * <p>
@@ -260,11 +272,8 @@ public final class Snapshots {
                 run(lease, "su - " + USER + " -c 'rm -rf ~/sokar && mkdir -p ~/sokar "
                         + "&& tar -x -C ~/sokar -f /tmp/tree.tar'", null);
                 run(lease, "su - " + USER + " -c 'cd ~/sokar && "
-                        + "JAVA_HOME=" + GRAALVM_HOME + " GRAALVM_HOME=" + GRAALVM_HOME
-                        + " PATH=" + GRAALVM_HOME + "/bin:$PATH "
-                        // sokar's settings.xml, where the build tooling's snapshots come from.
-                        + "./mvnw -B -s settings.xml -Pnative -DskipTests package "
-                        + "-pl app,daemon,hooks,agents/stub" + Leg.BUILD_STUB_MODULE + " -am'", null);
+                        + "export JAVA_HOME=" + GRAALVM_HOME + " GRAALVM_HOME=" + GRAALVM_HOME
+                        + " PATH=" + GRAALVM_HOME + "/bin:$PATH && " + TREE_BUILD + "'", null);
                 if ("fedora".equals(os)) {
                     // Compiled here rather than shipped compiled - a .pp is tied to the policy
                     // version of the machine that built it - and while the checkout is still

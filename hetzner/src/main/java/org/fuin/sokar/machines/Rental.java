@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * A machine rented, prepared, and handed to something that runs somewhere else.
  * <p>
- * <strong>Unlike {@link Leg} and {@link AgentLeg}, this one does not do the work.</strong> Those
+ * <strong>Unlike {@link AgentLeg} and the leg sokar keeps in its tree, this one does not do the work.</strong> Those
  * rent, run their own steps and delete, all in one invocation. A test suite that drives Sokar from
  * another machine - a Flutter interface under an X server on the runner, say - needs the machine to
  * outlive the command that created it, so what this writes is a file the next step reads.

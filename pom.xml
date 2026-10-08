@@ -15,7 +15,7 @@
 
     <groupId>org.fuin.sokar</groupId>
     <artifactId>sokar-buildtools</artifactId>
-    <version>0.4.3-SNAPSHOT</version>
+    <version>0.4.3</version>
     <packaging>pom</packaging>
     <name>Sokar Buildtools</name>
     <description>Sokar - The build and test tooling shared by the Sokar repositories (PARENT)</description>

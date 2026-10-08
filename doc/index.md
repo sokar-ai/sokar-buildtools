@@ -2,7 +2,7 @@
 
 The tooling every Sokar repository builds and tests with, published to Maven Central under `org.fuin.sokar`. None
 of it ships to a person who runs Sokar: it rents the machines the acceptance tests run on, checks what a release
-may publish, and checks the native images and packages before they go out.
+may publish, and checks the native images before they go out.
 
 ## The tools
 
@@ -12,14 +12,13 @@ may publish, and checks the native images and packages before they go out.
 | `sokar-release` | Checks that every workflow step is pinned by commit, that a repository's shared rules are copied byte for byte, that no page or source cites an issue in a way that goes stale, that a release builds and packages with no snapshot, that a deploy dry run went through the publishing plugin in every module and sent nothing off the machine, that every page of a documentation chapter is in its navigation once and every link on it can be followed, that every Maven module has a README linking its submodules, and that an agent's pinned CLI is the one its download names; records that CLI in the package's bill; moves named pins. | `check-actions`, `check-shared`, `check-citations`, `check-doc-site`, `check-readmes`, `check-releases`, `check-deploy`, `check-pin`, `add-fetched-cli`, `compare-bills`, `update`, … |
 | `sokar-ffm-check` | Checks that every downcall of the Foreign Function & Memory API a test made is registered for the native image. | run by `sokar`'s build |
 | `sokar-cpu-check` | Checks that a native image asks for no more than x86-64 v1, so it runs on any x86-64 CPU. | run by `sokar`'s build |
-| `sokar-package-check` | Checks the `.deb` and the `.rpm` against each other and against a real install. | run by `sokar`'s build |
 | `sokar-json` | The JSON reader and writer the tools above share. | - |
 
 ## Who uses which
 
 | Repository | Uses |
 |---|---|
-| `sokar` | all of them: the acceptance legs, the image and package checks, `check-actions` and `check-shared` |
+| `sokar` | all of them: the machines its acceptance legs run on, the image checks, `check-actions` and `check-shared` |
 | the agent repositories (`claude`, `pi`, `omp`) | `sokar-machines` for their acceptance legs and the GraalVM; `sokar-release` for the pinned CLI, the bill and the shared rules |
 | `frontend` | `sokar-machines` to lease a machine its integration tests reach; `sokar-release` for the shared rules |
 | `sluice`, `matrix` | `sokar-machines` for the GraalVM; `sokar-release` for the shared rules |

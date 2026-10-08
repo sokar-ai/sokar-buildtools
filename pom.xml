@@ -70,7 +70,6 @@
         <module>release</module>
         <module>ffm-check</module>
         <module>cpu-check</module>
-        <module>package-check</module>
     </modules>
 
     <dependencyManagement>

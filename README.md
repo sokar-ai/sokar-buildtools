@@ -17,7 +17,6 @@ The build and test tooling shared by the Sokar repositories, published to Maven 
 | `sokar-release` | [`release/`](release/README.md) | Decides what an agent package may publish without a person, moves named pins, and checks that every workflow step is pinned by commit. |
 | `sokar-ffm-check` | [`ffm-check/`](ffm-check/README.md) | Checks that every FFM downcall a test makes is registered for the native image. |
 | `sokar-cpu-check` | [`cpu-check/`](cpu-check/README.md) | Checks that a native image runs on any x86-64 CPU. |
-| `sokar-package-check` | [`package-check/`](package-check/README.md) | Checks the .deb and the .rpm against each other and against a real install. |
 | `sokar-json` | [`json/`](json/README.md) | The JSON reader and writer the tools above share. |
 
 ## Building

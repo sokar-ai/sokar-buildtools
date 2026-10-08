@@ -28,8 +28,9 @@
 - The NullAway compile comes from sokar-parent, and exec-maven-plugin is 3.6.3 as it sets 
 - The build takes org.fuin.sokar:sokar-parent as its parent, with every version it builds with unchanged 
 
-### Fixed (1 change)
+### Fixed (2 changes)
 
 - sokar-machines runs with bcpkix and bcutil of bcprov's release line, and sokar-release with the Jackson dataformats of the Jackson it resolves, also where another repository resolves them 
+- The build takes sokar-parent 0.1.1, whose release profile a child inherits again, so the published modules reach Central 
 
 

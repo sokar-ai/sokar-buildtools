@@ -9,7 +9,7 @@ may publish, and checks the native images before they go out.
 | Artifact | What it does | Commands |
 |---|---|---|
 | `sokar-machines` | Rents test machines and the snapshots they boot from, runs the agent repositories' acceptance legs on them, and installs the pinned GraalVM and musl toolchain in a build. A leg whose build is cancelled ends its suite and gives its machines back at once. A snapshot proves itself by building `sokar` with the tree's own `ci/leg-build.sh`. | `sweep`, `snapshot`, `acceptance`, `lease`, `jdk`, `musl` |
-| `sokar-release` | Checks that every workflow step is pinned by commit, that a repository's shared rules are copied byte for byte, that no page or source cites an issue in a way that goes stale, that a release builds and packages with no snapshot, that a deploy dry run went through the publishing plugin in every module and sent nothing off the machine, that every page of a documentation chapter is in its navigation once and every link on it can be followed, that every Maven module has a README linking its submodules, and that an agent's pinned CLI is the one its download names; records that CLI in the package's bill; moves named pins. | `check-actions`, `check-shared`, `check-citations`, `check-doc-site`, `check-readmes`, `check-releases`, `check-deploy`, `check-pin`, `add-fetched-cli`, `compare-bills`, `update`, … |
+| `sokar-release` | Checks that every workflow step is pinned by commit, that a repository's shared rules are copied byte for byte, that no page or source cites an issue in a way that goes stale, that a release builds and packages with no snapshot, that a deploy dry run went through the publishing plugin in every module and sent nothing off the machine, that native binaries need no newer C library or zlib than their packages declare, that every page of a documentation chapter is in its navigation once and every link on it can be followed, that every Maven module has a README linking its submodules, and that an agent's pinned CLI is the one its download names; records that CLI in the package's bill; moves named pins. | `check-actions`, `check-shared`, `check-citations`, `check-doc-site`, `check-readmes`, `check-releases`, `check-deploy`, `check-linkage`, `check-pin`, `add-fetched-cli`, `compare-bills`, `update`, … |
 | `sokar-ffm-check` | Checks that every downcall of the Foreign Function & Memory API a test made is registered for the native image. | run by `sokar`'s build |
 | `sokar-cpu-check` | Checks that a native image asks for no more than x86-64 v1, so it runs on any x86-64 CPU. | run by `sokar`'s build |
 | `sokar-json` | The JSON reader and writer the tools above share. | - |
@@ -115,3 +115,22 @@ release names, without a version of its own. A build tool runs as a plugin's dep
 
 The tools depend on nothing of `sokar`'s. `sokar`'s build runs them, so a dependency the other way would make the
 two impossible to release one after the other.
+
+## What `check-linkage` reads
+
+The native binaries a package carries, each with `readelf -d -V -W`, against what the packages declare by hand:
+
+```
+sokar-release check-linkage --declare libc.so.6=GLIBC:2.34 --declare libz.so.1=ZLIB:1.2.2 \
+    --ceiling GLIBC=2.41 apps/app/target/sokar daemon/target/sokard
+```
+
+jdeb and the rpm plugin do not read a binary to find what it links against, so the floor is written in the packages
+and this holds it to the binaries. Refused, each named:
+
+- **a library a binary needs that no `--declare` names**;
+- **a symbol version above the declared floor**: installable, then not startable on a system at the floor;
+- **a declared floor above its `--ceiling`**, the oldest system supported, so dropping one is a decision;
+- **`readelf` output that names no library and is not a static binary's**, a `readelf` that failed.
+
+A statically linked binary, `static-pie` included, needs nothing and passes.

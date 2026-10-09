@@ -23,7 +23,7 @@ public final class Main {
     /** The commands this build knows, named in the refusal of one it does not. */
     static final List<String> COMMANDS = List.of("compare-bills", "add-fetched-cli", "add-component",
             "merge-tree-bill", "upstream-version", "update", "check-pin", "check-actions", "check-shared",
-            "check-citations", "check-doc-site", "check-releases", "check-readmes", "check-deploy");
+            "check-citations", "check-doc-site", "check-releases", "check-readmes", "check-deploy", "check-linkage");
 
     private Main() {
         throw new UnsupportedOperationException("Utility class");
@@ -117,8 +117,38 @@ public final class Main {
             case "check-deploy" -> rest.size() != 1
                     ? usage(err, "check-deploy DEPLOY-LOG")
                     : new CheckDeploy(out, err).check(Path.of(rest.getFirst()));
+            case "check-linkage" -> checkLinkage(rest, out, err);
             default -> unknown(command, err);
         };
+    }
+
+    private static int checkLinkage(List<String> rest, PrintStream out, PrintStream err) {
+        final java.util.Map<String, CheckLinkage.Declared> declared = new java.util.LinkedHashMap<>();
+        final java.util.Map<String, String> ceilings = new java.util.LinkedHashMap<>();
+        final List<Path> binaries = new java.util.ArrayList<>();
+        boolean wrong = false;
+        for (int at = 0; at < rest.size() && !wrong; at++) {
+            final String argument = rest.get(at);
+            if ("--declare".equals(argument) && at + 1 < rest.size()) {
+                final java.util.Map.Entry<String, CheckLinkage.Declared> one = CheckLinkage.declared(rest.get(++at));
+                wrong = one == null;
+                if (one != null) {
+                    declared.put(one.getKey(), one.getValue());
+                }
+            } else if ("--ceiling".equals(argument) && at + 1 < rest.size()
+                    && rest.get(at + 1).matches("[A-Z]+=[0-9]+(\\.[0-9]+)*")) {
+                final String[] ceiling = rest.get(++at).split("=", 2);
+                ceilings.put(ceiling[0], ceiling[1]);
+            } else if (!argument.startsWith("--")) {
+                binaries.add(Path.of(argument));
+            } else {
+                wrong = true;
+            }
+        }
+        if (wrong || declared.isEmpty() || binaries.isEmpty()) {
+            return usage(err, "check-linkage --declare LIBRARY=PREFIX:FLOOR... [--ceiling PREFIX=VERSION]... BINARY...");
+        }
+        return new CheckLinkage(out, err).check(binaries, declared, ceilings);
     }
 
     private static int checkReleases(List<String> rest, PrintStream out, PrintStream err) {

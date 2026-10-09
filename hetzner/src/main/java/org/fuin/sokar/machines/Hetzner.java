@@ -49,8 +49,16 @@ public final class Hetzner implements Machines {
      */
     private static final Duration LIMIT_WAIT = Duration.ofSeconds(30);
 
-    /** How many times to wait out a full project before giving up. */
-    private static final int LIMIT_ATTEMPTS = 20;
+    /**
+     * How long to wait out a full project before giving up.
+     * <p>
+     * An hour, because acceptance legs run one after another: a run queued behind others waits
+     * out their whole legs.
+     */
+    private static final Duration LIMIT_PATIENCE = Duration.ofMinutes(60);
+
+    /** How many times to ask a full project: counted from the real wait, not a test's. */
+    private static final int LIMIT_ATTEMPTS = (int) LIMIT_PATIENCE.dividedBy(LIMIT_WAIT);
 
     /** How long a create or delete may take before something is wrong with it. */
     private static final Duration ACTION_PATIENCE = Duration.ofMinutes(5);
@@ -267,14 +275,14 @@ public final class Hetzner implements Machines {
                 return api.post("/servers", body);
             } catch (Api.ApiException ex) {
                 // Only that one error is retried. Anything else - a bad image, a full datacentre,
-                // a rejected token - is a mistake that waiting cannot fix, and burning ten minutes
+                // a rejected token - is a mistake that waiting cannot fix, and burning an hour
                 // before reporting it would be worse than failing now.
                 if (!"resource_limit_exceeded".equals(ex.code())) {
                     throw ex;
                 }
                 if (attempt == LIMIT_ATTEMPTS) {
                     throw new IOException("the project was still at its server limit after "
-                            + LIMIT_ATTEMPTS * limitWait.toSeconds() / 60 + " minutes. Another "
+                            + LIMIT_PATIENCE.toMinutes() + " minutes. Another "
                             + "run is holding machines, or something leaked one: check with the "
                             + "sweep.", ex);
                 }

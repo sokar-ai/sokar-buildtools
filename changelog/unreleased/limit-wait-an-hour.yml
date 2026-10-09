@@ -1,0 +1,2 @@
+title: sokar-machines waits up to 60 minutes at the project's server limit instead of 10, since acceptance legs run one after another
+type: changed

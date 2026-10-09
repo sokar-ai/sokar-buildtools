@@ -71,6 +71,28 @@ class LeaseTest {
     }
 
     @Test
+    void givesUpOnAFullProjectOnlyAfterAnHour() throws IOException {
+        final Credential credential = Keys.generated();
+        final AtomicInteger attempts = new AtomicInteger();
+        try (StubApi stub = lookups()
+                .answering("/ssh_keys?page=1&per_page=50",
+                        keys(Fingerprint.md5(credential)))
+                .answering("/servers", exchange -> {
+                    attempts.incrementAndGet();
+                    return new StubApi.Answer(403, "{\"error\":{\"code\":"
+                            + "\"resource_limit_exceeded\",\"message\":\"full\"}}");
+                })) {
+            assertThatThrownBy(() -> Hetzner.against(stub.base(), "run-1", NO_WAIT)
+                    .acquire(spec(credential)))
+                    .isInstanceOf(IOException.class)
+                    .hasMessageContaining("after 60 minutes");
+            // Acceptance legs run one after another, so a run queued behind others waits out
+            // their whole legs: every 30 seconds for an hour.
+            assertThat(attempts.get()).isEqualTo(120);
+        }
+    }
+
+    @Test
     void movesToTheNextTypeWhenOneWillNotTakeTheImage() throws IOException {
         final Credential credential = Keys.generated();
         final AtomicInteger creates = new AtomicInteger();
@@ -154,7 +176,7 @@ class LeaseTest {
                     return new StubApi.Answer(400, "{\"error\":{\"code\":\"invalid_input\","
                             + "\"message\":\"image is not available\"}}");
                 })) {
-            // Burning ten minutes before reporting a bad image would be worse than failing now.
+            // Burning an hour before reporting a bad image would be worse than failing now.
             assertThatThrownBy(() -> Hetzner.against(stub.base(), "run-1", NO_WAIT)
                     .acquire(spec(credential)))
                     .isInstanceOf(IOException.class)

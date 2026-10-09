@@ -1,6 +1,7 @@
 # The machines a CI leg boots from, kept current - for sokar's legs and every agent repository's,
 # which boot the same snapshots. The pins live in hetzner/pom.xml of this repository.
-name: Machines
+name: Machine images
+run-name: "${{ github.workflow }} · ${{ github.ref_name }}: ${{ github.event.head_commit.message || github.event.pull_request.title || github.workflow }}"
 
 on:
   # Daily: a release becomes old enough on a day of its own, not on the day it was published.

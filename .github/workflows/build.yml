@@ -1,7 +1,8 @@
 # What a change proves, and where.
 name: Build
+run-name: "${{ github.workflow }} · ${{ github.ref_name }}: ${{ github.event.head_commit.message || github.event.pull_request.title || github.workflow }}"
 
-# A push that only touches documentation builds nothing; the Shared rules workflow checks it.
+# A push that only touches documentation builds nothing; the Shared rules check checks it.
 on:
   push:
     branches: ['**']

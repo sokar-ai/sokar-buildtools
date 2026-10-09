@@ -1,7 +1,8 @@
 # Checks the documents: AGENTS.md's shared block against its hash, no citation of an issue that goes stale, and a
 # documentation chapter somebody can find their way through. Of its own because the build ignores a change to Markdown
 # alone, which is exactly the change this is for, and it leases no machine.
-name: Shared rules
+name: Shared rules check
+run-name: "${{ github.workflow }} · ${{ github.ref_name }}: ${{ github.event.head_commit.message || github.event.pull_request.title || github.workflow }}"
 
 on:
   push:

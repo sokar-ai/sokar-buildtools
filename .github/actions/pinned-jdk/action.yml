@@ -1,6 +1,6 @@
 # The GraalVM the CI snapshots pin, installed on a GitHub runner and checked against its digest - so a
 # job compiles with the same JDK a leg builds with, and never with whatever release a moving name ('25')
-# resolved to that day. The pin lives in hetzner/pom.xml and is moved by the Machines
+# resolved to that day. The pin lives in hetzner/pom.xml and is moved by the Machine images
 # workflow once a release is three days old.
 #
 # Bootstrapped from the runner's own Java 25 (JAVA_HOME_25_X64), which runs sokar-machines once to

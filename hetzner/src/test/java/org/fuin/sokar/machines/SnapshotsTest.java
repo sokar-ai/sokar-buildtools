@@ -31,6 +31,14 @@ class SnapshotsTest {
     }
 
     @Test
+    void bringsTheUnzipTheMavenWrapperChecksItsDownloadWith() {
+        // Without unzip, mvnw fetches the .tar.gz and checks it against the .zip's pinned digest: the ubuntu
+        // snapshot of f19c556 died on "Failed to validate Maven distribution SHA-256" building the product once.
+        assertThat(Snapshots.recipe("ubuntu")).containsPattern("apt-get install [^&]* unzip ");
+        assertThat(Snapshots.recipe("fedora")).containsPattern("dnf install [^&]* unzip ");
+    }
+
+    @Test
     void usesEachDistributionsOwnPackageManager() {
         assertThat(Snapshots.recipe("ubuntu")).contains("apt-get").doesNotContain("dnf ");
         assertThat(Snapshots.recipe("fedora")).contains("dnf ").doesNotContain("apt-get");

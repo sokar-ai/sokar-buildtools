@@ -375,12 +375,13 @@ public final class Snapshots {
         if ("fedora".equals(os)) {
             return "dnf install -y -q podman nftables git curl gnupg2 ca-certificates "
                     + "shadow-utils slirp4netns passt fuse-overlayfs crun dnsmasq "
-                    + "gcc glibc-devel zlib-devel libstdc++-static && dnf clean all";
+                    + "gcc glibc-devel zlib-devel libstdc++-static unzip && dnf clean all";
         }
+        // unzip for the Maven wrapper: without it, mvnw fetches the .tar.gz and refuses it against the .zip's digest.
         return "export DEBIAN_FRONTEND=noninteractive && apt-get update -qq && "
                 + "apt-get install -y -qq podman nftables git curl gnupg ca-certificates "
                 + "uidmap slirp4netns passt fuse-overlayfs crun dnsmasq-base "
-                + "build-essential zlib1g-dev "
+                + "build-essential zlib1g-dev unzip "
                 + "&& apt-get clean && rm -rf /var/lib/apt/lists/*";
     }
 

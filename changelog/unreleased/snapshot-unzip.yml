@@ -1,0 +1,2 @@
+title: The machine images install unzip, which the Maven wrapper needs to check its download against the pinned digest; without it the snapshot build failed
+type: fixed

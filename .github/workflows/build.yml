@@ -52,14 +52,16 @@ jobs:
           ./mvnw -B -q -s settings.xml -pl release exec:java@check-deploy
 
   # Only when a change that landed on main moved what a snapshot is made of - the pom changes for
-  # other reasons too. The legs of every Sokar repository boot the newest snapshot, so this is where
-  # they are rebuilt: here, where the pins are.
+  # other reasons too - or when a person starts this workflow on main by hand. The legs of every Sokar
+  # repository boot the newest snapshot, so this is where they are rebuilt: here, where the pins are.
   snapshots:
     name: Snapshot - ${{ matrix.os }}
     runs-on: ubuntu-latest
     # The step that rents the machine stops sooner, so the clean-up still runs inside this limit.
     timeout-minutes: 75
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      && github.ref == 'refs/heads/main'
     permissions:
       contents: read
     strategy:
@@ -71,15 +73,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Across everything the push brought, not only its last commit.
-      - name: Did a pin move?
+      # Across everything the push brought, not only its last commit: a pin, or the recipe that builds the
+      # images from the pins. The unzip fix (cd00619) moved only the recipe, and no snapshot was built from it.
+      # Started by hand, it rebuilds whatever moved: the way to recover after a push whose snapshot failed.
+      - name: Did a pin or the recipe move?
         id: moved
         env:
           BEFORE: ${{ github.event.before }}
+          EVENT: ${{ github.event_name }}
         run: |
+          if [ "$EVENT" = workflow_dispatch ]; then
+              echo "moved=yes" >> "$GITHUB_OUTPUT"
+              exit 0
+          fi
           base="$BEFORE"
           if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then base=HEAD~1; fi
-          if git diff "$base" HEAD -- hetzner/pom.xml | grep -Eq '^[-+][[:space:]]*<machines\.'; then
+          recipe="hetzner/src/main/java/org/fuin/sokar/machines/Snapshots.java hetzner/src/main/resources/org/fuin/sokar/machines"
+          if git diff "$base" HEAD -- hetzner/pom.xml | grep -Eq '^[-+][[:space:]]*<machines\.' \
+                  || ! git diff --quiet "$base" HEAD -- $recipe; then
               echo "moved=yes" >> "$GITHUB_OUTPUT"
           else
               echo "moved=no" >> "$GITHUB_OUTPUT"

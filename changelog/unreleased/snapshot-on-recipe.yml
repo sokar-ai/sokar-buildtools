@@ -1,0 +1,2 @@
+title: The Build rebuilds the machine images when their recipe changes, not only a pin, and when started on main by hand, to recover after a push whose snapshot failed
+type: changed

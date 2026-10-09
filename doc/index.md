@@ -9,7 +9,7 @@ may publish, and checks the native images before they go out.
 | Artifact | What it does | Commands |
 |---|---|---|
 | `sokar-machines` | Rents test machines and the snapshots they boot from, runs the agent repositories' acceptance legs on them, and installs the pinned GraalVM and musl toolchain in a build. A leg whose build is cancelled ends its suite and gives its machines back at once. A snapshot proves itself by building `sokar` with the tree's own `ci/leg-build.sh`. | `sweep`, `snapshot`, `acceptance`, `lease`, `jdk`, `musl` |
-| `sokar-release` | Checks that every workflow step is pinned by commit, that a repository's shared rules are copied byte for byte, that no page or source cites an issue in a way that goes stale, that a release builds and packages with no snapshot, that a deploy dry run went through the publishing plugin in every module and sent nothing off the machine, that native binaries need no newer C library or zlib than their packages declare, that every page of a documentation chapter is in its navigation once and every link on it can be followed, that every Maven module has a README linking its submodules, and that an agent's pinned CLI is the one its download names; records that CLI in the package's bill; moves named pins. | `check-actions`, `check-shared`, `check-citations`, `check-doc-site`, `check-readmes`, `check-releases`, `check-deploy`, `check-linkage`, `check-pin`, `add-fetched-cli`, `compare-bills`, `update`, … |
+| `sokar-release` | Checks that every workflow step is pinned by commit, that a repository's shared rules are copied byte for byte, that no page or source cites an issue in a way that goes stale, that a release builds and packages with no snapshot, that a deploy dry run went through the publishing plugin in every module and sent nothing off the machine, that native binaries need no newer C library or zlib than their packages declare, that the built `.deb` and `.rpm` carry the project's version, that every page of a documentation chapter is in its navigation once and every link on it can be followed, that every Maven module has a README linking its submodules, and that an agent's pinned CLI is the one its download names; records that CLI in the package's bill; moves named pins. | `check-actions`, `check-shared`, `check-citations`, `check-doc-site`, `check-readmes`, `check-releases`, `check-deploy`, `check-linkage`, `check-package-version`, `check-pin`, `add-fetched-cli`, `compare-bills`, `update`, … |
 | `sokar-ffm-check` | Checks that every downcall of the Foreign Function & Memory API a test made is registered for the native image. | run by `sokar`'s build |
 | `sokar-cpu-check` | Checks that a native image asks for no more than x86-64 v1, so it runs on any x86-64 CPU. | run by `sokar`'s build |
 | `sokar-json` | The JSON reader and writer the tools above share. | - |
@@ -134,3 +134,17 @@ and this holds it to the binaries. Refused, each named:
 - **`readelf` output that names no library and is not a static binary's**, a `readelf` that failed.
 
 A statically linked binary, `static-pie` included, needs nothing and passes.
+
+## What `check-package-version` reads
+
+The newest `.deb` and `.rpm` of a name in a directory, with `dpkg-deb -f` and `rpm -qp`:
+
+```
+sokar-release check-package-version sokar-build-github 0.4.2-SNAPSHOT 7 target
+```
+
+Both must carry the project's version as the packaging promises: `0.4.2-SNAPSHOT` built as run 7 is
+`0.4.2~snapshot.7`, below its release and above the run before; a release is its own version. The rpm's release is
+`1`, so the two say the same. Refused, each named: a deb of another name or version, and an rpm whose name, version
+or release differs, such as the timestamp release the rpm plugin gives a snapshot unless told not to.
+

@@ -1,0 +1,2 @@
+title: sokar-release check-package-version reads the built .deb and .rpm and holds both to the project's version as the packaging maps it
+type: added

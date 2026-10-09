@@ -23,7 +23,8 @@ public final class Main {
     /** The commands this build knows, named in the refusal of one it does not. */
     static final List<String> COMMANDS = List.of("compare-bills", "add-fetched-cli", "add-component",
             "merge-tree-bill", "upstream-version", "update", "check-pin", "check-actions", "check-shared",
-            "check-citations", "check-doc-site", "check-releases", "check-readmes", "check-deploy", "check-linkage");
+            "check-citations", "check-doc-site", "check-releases", "check-readmes", "check-deploy", "check-linkage",
+            "check-package-version");
 
     private Main() {
         throw new UnsupportedOperationException("Utility class");
@@ -118,6 +119,10 @@ public final class Main {
                     ? usage(err, "check-deploy DEPLOY-LOG")
                     : new CheckDeploy(out, err).check(Path.of(rest.getFirst()));
             case "check-linkage" -> checkLinkage(rest, out, err);
+            case "check-package-version" -> rest.size() != 4
+                    ? usage(err, "check-package-version NAME PROJECT-VERSION RUN DIRECTORY")
+                    : new CheckPackageVersion(out, err).check(rest.get(0), rest.get(1), rest.get(2),
+                            Path.of(rest.get(3)));
             default -> unknown(command, err);
         };
     }

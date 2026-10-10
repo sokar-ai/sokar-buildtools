@@ -33,7 +33,7 @@ class UpdateTest {
 
         assertThat(update(claude, manifest(), "2.1.267", false)).as(report()).isEqualTo(0);
 
-        // The operator's rule: the patch moves with the pin, and a snapshot stays one until a release is cut.
+        // The rule: the patch moves with the pin, and a snapshot stays one until a release is cut.
         assertThat(claude.read("pom.xml")).contains("<agent.cli.version>2.1.267</agent.cli.version>")
                 .contains("<version>1.0.1-SNAPSHOT</version>");
         assertThat(claude.read("src/main/resources/agent/claude.yaml")).contains("sha256: \"" + NEW_DIGEST + "\"")

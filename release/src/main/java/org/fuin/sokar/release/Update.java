@@ -208,7 +208,7 @@ public final class Update {
                 "$1" + Matcher.quoteReplacement(value) + "$2", name + " in pom.xml");
     }
 
-    // The operator's rule: the patch moves with the pin, a snapshot staying one; an inherited version stays.
+    // The rule: the patch moves with the pin, a snapshot staying one; an inherited version stays.
     private static String bumped(Pom pom, String pomText, Map<String, String> report) throws Stop {
         final String version = pom.version();
         final String next = version == null ? null : Versions.nextPatch(version);

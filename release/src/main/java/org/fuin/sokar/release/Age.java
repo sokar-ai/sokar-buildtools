@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
  * How old a release has to be before it is taken, and when one was published.
  * <p>
  * <strong>Why a release waits at all.</strong> A release that is withdrawn, or followed by a fix within a
- * day or two, is the one an update job would otherwise pin the hour it appears. The operator's rule is
+ * day or two, is the one an update job would otherwise pin the hour it appears. The rule is
  * three days, and still the newest: a release younger than that is waited for, never replaced by the one
  * before it.
  */

@@ -79,7 +79,7 @@ public final class Versions {
     /**
      * The module version an update moves to: the next patch, a snapshot staying a snapshot.
      * <p>
-     * The operator's rule for the agent repositories, whose poms stay snapshots until a release is cut:
+     * The rule for the agent repositories, whose poms stay snapshots until a release is cut:
      * {@code 1.0.0-SNAPSHOT} becomes {@code 1.0.1-SNAPSHOT}, {@code 1.0.3} becomes {@code 1.0.4}. Anything
      * else is left alone, since its successor would be invented.
      *

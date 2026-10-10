@@ -58,6 +58,7 @@ The list is in the check (`CheckActions.WRITES`), the same for every repository:
 | `machines.yml` | `refresh` | `contents`, `pull-requests` | moves a pin on its own branch and opens the pull request |
 | `update.yml` | `update` | `contents`, `pull-requests` | the same, for an agent's pinned CLI |
 | `site.yml` | `publish` | `pages`, `id-token` | publishes the documentation site |
+| `windows.yml` | `zip` | `id-token`, `attestations` | attests the interface's Windows ZIP |
 
 A job that needs a write not in it is a change to the list, with its reason, in `sokar-buildtools`.
 

@@ -337,6 +337,16 @@ class CheckActionsTest {
     }
 
     @Test
+    void acceptsTheAttestationInTheWindowsZipJobOnly() throws IOException {
+        named("windows.yml", "on: push\npermissions:\n  contents: read\njobs:\n  zip:\n    permissions:\n"
+                + "      contents: read\n      id-token: write\n      attestations: write\n    runs-on: windows-latest\n"
+                + STEP + "  test:\n    permissions:\n      id-token: write\n    runs-on: windows-latest\n" + STEP);
+
+        assertThat(check(directory)).isEqualTo(Stop.REFUSED);
+        assertThat(stderr()).contains("job 'test'").doesNotContain("job 'zip'");
+    }
+
+    @Test
     void refusesAWriteTheListNamesForAnotherPermission() throws IOException {
         named("delete-runs.yml", "on: workflow_dispatch\npermissions: {}\njobs:\n  delete:\n    permissions:\n"
                 + "      actions: write\n      contents: write\n    runs-on: ubuntu-latest\n" + STEP);

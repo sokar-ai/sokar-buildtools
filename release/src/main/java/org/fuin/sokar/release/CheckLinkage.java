@@ -73,6 +73,22 @@ final class CheckLinkage {
      *         binary cannot be read
      */
     int check(List<Path> binaries, Map<String, Declared> declared, Map<String, String> ceilings) {
+        return check(binaries, declared, ceilings, false);
+    }
+
+    /**
+     * Checks binaries against what their packages declare, every library or only the declared ones.
+     *
+     * @param binaries The binaries the packages carry.
+     * @param declared What the packages declare, by library.
+     * @param ceilings The highest floor allowed, by prefix.
+     * @param declaredOnly Whether a library nobody declared is left to the package, which derives its dependencies
+     *        from the binary, and only the declared ones are held to their floor.
+     * @return 0 when the packages cover every binary, {@link Stop#REFUSED} otherwise, {@link Stop#UNANSWERED} when a
+     *         binary cannot be read
+     */
+    int check(List<Path> binaries, Map<String, Declared> declared, Map<String, String> ceilings,
+            boolean declaredOnly) {
         final List<String> problems = new ArrayList<>(ceilings(declared, ceilings));
         for (final Path binary : binaries) {
             final String readelf;
@@ -82,7 +98,7 @@ final class CheckLinkage {
                 err.println("could not read " + binary + ": " + ex.getMessage());
                 return Stop.UNANSWERED;
             }
-            problems.addAll(problems(binary.getFileName().toString(), readelf, declared));
+            problems.addAll(problems(binary.getFileName().toString(), readelf, declared, declaredOnly));
         }
         if (!problems.isEmpty()) {
             problems.forEach(problem -> err.println("FAIL  " + problem));
@@ -104,6 +120,19 @@ final class CheckLinkage {
      * @return Problems, empty when the packages cover the binary.
      */
     static List<String> problems(String name, String readelf, Map<String, Declared> declared) {
+        return problems(name, readelf, declared, false);
+    }
+
+    /**
+     * Returns every way one binary needs more than the packages declare, every library or only the declared ones.
+     *
+     * @param name The binary's name, for the message.
+     * @param readelf Output of {@code readelf -d -V -W} in the C locale.
+     * @param declared What the packages declare, by library.
+     * @param declaredOnly Whether a library nobody declared is left to the package.
+     * @return Problems, empty when the packages cover the binary.
+     */
+    static List<String> problems(String name, String readelf, Map<String, Declared> declared, boolean declaredOnly) {
         if (readelf.contains(STATIC)) {
             return List.of();
         }
@@ -120,7 +149,7 @@ final class CheckLinkage {
         }
         final List<String> problems = new ArrayList<>();
         for (final String lib : needed) {
-            if (!declared.containsKey(lib)) {
+            if (!declaredOnly && !declared.containsKey(lib)) {
                 problems.add(name + " needs " + lib + ", and no package declares it");
             }
         }

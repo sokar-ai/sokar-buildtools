@@ -135,6 +135,11 @@ and this holds it to the binaries. Refused, each named:
 
 A statically linked binary, `static-pie` included, needs nothing and passes.
 
+**`--declared-only`** is for a package that derives its dependencies from its binaries, as one built with
+`dpkg-shlibdeps` does: a library no `--declare` names is left to the package, and only the declared ones are held to
+their floor and their ceiling. The interface's bundle links twenty libraries besides the C library; naming each by hand
+would undo the derivation, and its C library's floor is still the one thing a newer build host can raise unnoticed.
+
 ## What `check-package-version` reads
 
 The newest `.deb` and `.rpm` of a name in a directory, with `dpkg-deb -f` and `rpm -qp`:

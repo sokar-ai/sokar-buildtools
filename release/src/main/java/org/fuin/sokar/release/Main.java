@@ -127,14 +127,17 @@ public final class Main {
         };
     }
 
-    private static int checkLinkage(List<String> rest, PrintStream out, PrintStream err) {
+    static int checkLinkage(List<String> rest, PrintStream out, PrintStream err) {
         final java.util.Map<String, CheckLinkage.Declared> declared = new java.util.LinkedHashMap<>();
         final java.util.Map<String, String> ceilings = new java.util.LinkedHashMap<>();
         final List<Path> binaries = new java.util.ArrayList<>();
         boolean wrong = false;
+        boolean declaredOnly = false;
         for (int at = 0; at < rest.size() && !wrong; at++) {
             final String argument = rest.get(at);
-            if ("--declare".equals(argument) && at + 1 < rest.size()) {
+            if ("--declared-only".equals(argument)) {
+                declaredOnly = true;
+            } else if ("--declare".equals(argument) && at + 1 < rest.size()) {
                 final java.util.Map.Entry<String, CheckLinkage.Declared> one = CheckLinkage.declared(rest.get(++at));
                 wrong = one == null;
                 if (one != null) {
@@ -151,9 +154,10 @@ public final class Main {
             }
         }
         if (wrong || declared.isEmpty() || binaries.isEmpty()) {
-            return usage(err, "check-linkage --declare LIBRARY=PREFIX:FLOOR... [--ceiling PREFIX=VERSION]... BINARY...");
+            return usage(err, "check-linkage [--declared-only] --declare LIBRARY=PREFIX:FLOOR..."
+                    + " [--ceiling PREFIX=VERSION]... BINARY...");
         }
-        return new CheckLinkage(out, err).check(binaries, declared, ceilings);
+        return new CheckLinkage(out, err).check(binaries, declared, ceilings, declaredOnly);
     }
 
     private static int checkReleases(List<String> rest, PrintStream out, PrintStream err) {

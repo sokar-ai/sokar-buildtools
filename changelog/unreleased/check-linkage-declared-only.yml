@@ -1,0 +1,2 @@
+title: check-linkage --declared-only holds only the declared libraries to their floor and ceiling, for a package that derives its dependencies from its binaries
+type: added

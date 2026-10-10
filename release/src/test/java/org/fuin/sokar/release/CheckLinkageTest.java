@@ -58,6 +58,28 @@ class CheckLinkageTest {
     }
 
     @Test
+    void withDeclaredOnlyALibraryNobodyDeclaresIsLeftToThePackageButTheFloorStillHolds() {
+        // A package that derives its dependencies from the binary - the interface's, which links GTK and twenty more -
+        // holds only its C library's floor and ceiling here; naming each library by hand would undo the derivation.
+        final String withGtk = DYNAMIC + " 0x0000000000000001 (NEEDED)             Shared library: [libgtk-3.so.0]\n";
+
+        assertThat(CheckLinkage.problems("sokar_frontend", withGtk, DECLARED, true)).isEmpty();
+        assertThat(CheckLinkage.problems("sokar_frontend", withGtk, Map.of(
+                "libc.so.6", new CheckLinkage.Declared("GLIBC", "2.33")), true))
+                .containsExactly("sokar_frontend needs GLIBC_2.34, and the packages promise only 2.33");
+    }
+
+    @Test
+    void readsDeclaredOnlyFromTheCommandLine() throws Exception {
+        final java.io.ByteArrayOutputStream err = new java.io.ByteArrayOutputStream();
+        final int usage = Main.checkLinkage(java.util.List.of("--declared-only", "--declare", "libc.so.6=GLIBC:2.34"),
+                new java.io.PrintStream(new java.io.ByteArrayOutputStream()), new java.io.PrintStream(err));
+
+        assertThat(usage).as("no binary named: the usage, which names the option").isNotZero();
+        assertThat(err.toString()).contains("--declared-only");
+    }
+
+    @Test
     void takesAStaticBinaryAsNeedingNothing() {
         // The hooks are linked statically against musl: nothing to declare, and nothing that can go missing.
         assertThat(CheckLinkage.problems("sokar-hook-nft", STATIC, DECLARED)).isEmpty();

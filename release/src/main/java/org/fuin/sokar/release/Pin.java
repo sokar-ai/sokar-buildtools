@@ -100,7 +100,7 @@ public record Pin(Pom pom, String name, String label, String property, Release.U
             throw Stop.refused(pom.file() + ": " + prefix + "image and " + prefix + "image-property come together");
         }
         // Written back as Docker Hub gives it, 'sha256:<hex>': held as bare hex, a follower would be rewritten
-        // to '@sha256:sha256:<hex>' - an image reference no registry resolves. Measured by Agent Smith.
+        // to '@sha256:sha256:<hex>' - an image reference no registry resolves. Measured.
         final String imageDigest = imageProperty == null ? null : pom.optional(imageProperty);
         if (imageProperty != null && (imageDigest == null || !Digests.IMAGE.matcher(imageDigest).matches())) {
             throw Stop.refused(pom.file() + ": " + imageProperty + " holds '" + imageDigest

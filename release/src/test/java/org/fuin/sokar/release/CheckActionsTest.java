@@ -63,7 +63,7 @@ class CheckActionsTest {
 
     @Test
     void refusesAVersionThatNamesALineOfReleasesRatherThanOne() throws IOException {
-        // Measured by Agent Frontend: '# v7' passed, and it does not say which release the commit is.
+        // Measured: '# v7' passed, and it does not say which release the commit is.
         workflow("      - uses: actions/checkout@" + COMMIT + " # v7\n");
 
         assertThat(check(directory)).isEqualTo(Stop.REFUSED);
@@ -137,7 +137,7 @@ class CheckActionsTest {
 
     @Test
     void refusesADependabotThatTakesAReleaseTheDayItAppearsOrMovesEachActionAlone() throws IOException {
-        // Measured by Agent Frontend against the published check: both passed.
+        // Measured against the published check: both passed.
         workflow("      - uses: ./.github/actions/pinned-jdk\n");
         Files.writeString(directory.resolve("dependabot.yml"),
                 "updates:\n  - package-ecosystem: github-actions\n    cooldown:\n      default-days: 0\n");
@@ -148,7 +148,7 @@ class CheckActionsTest {
 
     @Test
     void aGroupedEntryOfAnotherEcosystemDoesNotCoverAnUngroupedGithubActionsOne() throws IOException {
-        // Measured by Agent Matrix: a docker entry's groups and cooldown answered for the github-actions entry.
+        // Measured: a docker entry's groups and cooldown answered for the github-actions entry.
         workflow("      - uses: ./.github/actions/pinned-jdk\n");
         Files.writeString(directory.resolve("dependabot.yml"), "updates:\n  - package-ecosystem: github-actions\n"
                 + "    directory: /\n  - package-ecosystem: docker\n    directory: /\n    cooldown:\n"

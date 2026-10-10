@@ -56,6 +56,25 @@ final class CheckActions {
     private static final Pattern PULL_REQUESTS_CODE =
             Pattern.compile("github\\.event\\.workflow_run\\.(head_sha|head_branch|head_repository|pull_requests)");
 
+    /**
+     * The only jobs that may write, by workflow file and job id, and what each may write. Everywhere else a workflow
+     * reads or holds nothing: a step it fetches runs beside its token, and a token that can write lets that step push,
+     * delete or publish. A new entry is a change to this list, with its reason.
+     */
+    static final java.util.Map<String, java.util.Set<String>> WRITES = java.util.Map.of(
+            // Deletes this repository's old runs; the shared copy, the same in every repository.
+            "delete-runs.yml/delete", java.util.Set.of("actions"),
+            // Cancels the legs of a commit that failed its unit tests, so no machine is rented for nothing.
+            "build.yml/build", java.util.Set.of("actions"),
+            // Moves a pin on a branch of its own and opens the pull request for it.
+            "machines.yml/refresh", java.util.Set.of("contents", "pull-requests"),
+            "update.yml/update", java.util.Set.of("contents", "pull-requests"),
+            // Publishes the documentation site to GitHub Pages.
+            "site.yml/publish", java.util.Set.of("pages", "id-token"));
+
+    /** A permission and its value, one per line of a map. */
+    private static final Pattern GRANT = Pattern.compile("^\\s+([\\w-]+):\\s*(\\S+)\\s*$");
+
     private static final Pattern VERSION = Pattern.compile("^\\s*#\\s*v?\\d+\\.\\d+\\.\\d+(\\s|$)");
 
     private final PrintStream out;
@@ -89,12 +108,19 @@ final class CheckActions {
         final List<String> faults = new ArrayList<>();
         int steps = 0;
         int forkFaults = 0;
+        int permissionFaults = 0;
         try (Stream<Path> files = Files.walk(directory)) {
             for (final Path file : files.filter(CheckActions::isYaml).sorted().toList()) {
                 final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
                 for (final String fork : forks(lines)) {
                     faults.add(directory.relativize(file) + ":" + fork);
                     forkFaults++;
+                }
+                if (directory.relativize(file).startsWith("workflows")) {
+                    for (final String permission : permissions(file.getFileName().toString(), lines)) {
+                        faults.add(directory.relativize(file) + ":" + permission);
+                        permissionFaults++;
+                    }
                 }
                 for (int at = 0; at < lines.size(); at++) {
                     final Matcher uses = USES.matcher(lines.get(at));
@@ -119,6 +145,12 @@ final class CheckActions {
                 err.println(faults.size() + " workflow(s) a fork's pull request can run with this repository's secrets."
                         + " Run on 'pull_request', which a fork gets without them, and keep what needs a secret to a"
                         + " workflow on this repository's own commits.");
+                return Stop.REFUSED;
+            }
+            if (permissionFaults == faults.size()) {
+                err.println(faults.size() + " permission(s) a workflow's token holds beyond what it needs. A workflow"
+                        + " reads or holds nothing at its top, and only the jobs check-actions' list names may write,"
+                        + " each only what the list names for it.");
                 return Stop.REFUSED;
             }
             err.println(faults.size() + " fault(s) in what the build runs or in what moves it. Pin each step to"
@@ -159,6 +191,79 @@ final class CheckActions {
                 faults.add((at + 1) + ": a 'workflow_run' that takes the triggering pull request's code runs a fork's"
                         + " code with this repository's secrets");
             }
+        }
+        return faults;
+    }
+
+    /**
+     * Finds the permissions a workflow grants beyond what {@link #WRITES} allows.
+     * <p>
+     * Every workflow has {@code permissions:} at its top, read or nothing: without one its token gets the
+     * repository's default, which may be write. A job may write only what the list names for it, and
+     * {@code write-all} is refused everywhere. A file without {@code jobs:} is no workflow and is not read.
+     *
+     * @param file The workflow's file name.
+     * @param lines Its lines.
+     * @return Each fault as {@code "<line>: <what>"}, possibly none.
+     */
+    static List<String> permissions(String file, List<String> lines) {
+        final List<String> faults = new ArrayList<>();
+        final List<String> code = lines.stream().map(CheckActions::code).toList();
+        final int jobs = code.indexOf("jobs:");
+        if (jobs < 0) {
+            return faults;
+        }
+        boolean top = false;
+        String job = null;
+        for (int at = 0; at < code.size(); at++) {
+            final String line = code.get(at);
+            if (at > jobs && line.matches("^  [\\w-]+:\\s*$")) {
+                job = line.strip().replace(":", "");
+                continue;
+            }
+            final Matcher key = Pattern.compile("^( *)permissions:\\s*(.*?)\\s*$").matcher(line);
+            if (!key.matches()) {
+                continue;
+            }
+            final boolean atTop = key.group(1).isEmpty();
+            if (!atTop && (job == null || key.group(1).length() != 4)) {
+                continue;
+            }
+            top |= atTop;
+            final String where = atTop ? "at its top" : "in job '" + job + "'";
+            final java.util.Set<String> allowed = atTop ? java.util.Set.of()
+                    : WRITES.getOrDefault(file + "/" + job, java.util.Set.of());
+            final String inline = key.group(2);
+            if (!inline.isEmpty()) {
+                if (inline.equals("write-all")) {
+                    faults.add((at + 1) + ": 'write-all' " + where + " lets every step write everything; name each"
+                            + " permission");
+                } else if (!inline.equals("read-all") && !inline.equals("{}")) {
+                    faults.add((at + 1) + ": 'permissions: " + inline + "' " + where + " is not read-all, {} or a"
+                            + " map");
+                }
+                continue;
+            }
+            for (int next = at + 1; next < code.size(); next++) {
+                final Matcher grant = GRANT.matcher(code.get(next));
+                if (code.get(next).isBlank()) {
+                    continue;
+                }
+                if (!grant.matches() || code.get(next).indexOf(grant.group(1)) <= key.group(1).length()) {
+                    break;
+                }
+                if (grant.group(2).equals("write") && !allowed.contains(grant.group(1))) {
+                    faults.add((next + 1) + ": '" + grant.group(1) + ": write' " + where + "; "
+                            + (atTop ? "the top reads or holds nothing, and a job that writes says so in its own block"
+                                    : "the check's list allows " + (allowed.isEmpty() ? "no write there"
+                                            : "only " + String.join(", ", new java.util.TreeSet<>(allowed))
+                                                    + " there")));
+                }
+            }
+        }
+        if (!top) {
+            faults.add(0, (jobs + 1) + ": no 'permissions:' at its top, so its token gets the repository's default,"
+                    + " which may be write; add 'permissions:' with 'contents: read', or '{}'");
         }
         return faults;
     }

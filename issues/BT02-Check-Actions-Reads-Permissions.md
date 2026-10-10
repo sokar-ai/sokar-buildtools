@@ -1,6 +1,6 @@
 # BT02 — Check Actions Reads Permissions
 
-**Status:** soon. Wanted before `sokar-frontend` builds its Windows job for F102's stage 2.
+**Status:** built; in force once every repository has moved its writes into their jobs.
 
 **What must be true.** `check-actions` reads a workflow's `permissions:` as well as its `uses:`: at the top a workflow
 grants read or nothing, and a `write` permission is allowed only in a job that the check's own list names for it.
@@ -39,6 +39,7 @@ workflow. A build that attests what it made needs `id-token: write` and `attesta
   `shared-rules.yml` and `artifactory-smoke.yml`, and in `sokar-message-sluice` `build.yml` and `shared-rules.yml`. Those of `sokar-frontend`, `sokar-message-matrix` and `sokar-intellij`
   already set `contents: read`.
 
-## To be checked
+## Decided
 
-- Where the list lives: in the check, or in a file of each repository that the shared rules keep alike.
+- The list lives in the check (`CheckActions.WRITES`), the same for every repository; a new write is a change
+  there, with its reason. `doc/index.md` shows it.

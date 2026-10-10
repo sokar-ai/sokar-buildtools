@@ -38,6 +38,29 @@ writes: an SVG image's path data, a lock file's hashes. Build output is not read
   relative to the root, with `#` starting a comment; a path there that is not a committed file is refused, so the
   list cannot outlive what it exempts.
 
+## What `check-actions` reads about permissions
+
+Besides the pins, `check-actions` reads each workflow's `permissions:`. A file under `.github/workflows` with a
+`jobs:` line is held to three rules:
+
+- **Its top says `permissions:`**: `read-all`, `{}`, or a map of `read` and `none` only. Without one, the token
+  gets the repository's default, which may be write.
+- **A job may write only what the check's list names for it**, by workflow file and job id. A write anywhere else
+  is refused, naming the file, the job, the permission and what the list allows there.
+- **`write-all` is refused everywhere.**
+
+The list is in the check (`CheckActions.WRITES`), the same for every repository:
+
+| Workflow file | Job | May write | Why |
+|---|---|---|---|
+| `delete-runs.yml` | `delete` | `actions` | deletes the repository's old runs |
+| `build.yml` | `build` | `actions` | cancels the legs of a commit that failed its unit tests |
+| `machines.yml` | `refresh` | `contents`, `pull-requests` | moves a pin on its own branch and opens the pull request |
+| `update.yml` | `update` | `contents`, `pull-requests` | the same, for an agent's pinned CLI |
+| `site.yml` | `publish` | `pages`, `id-token` | publishes the documentation site |
+
+A job that needs a write not in it is a change to the list, with its reason, in `sokar-buildtools`.
+
 ## What `check-readmes` reads
 
 ```

@@ -1,0 +1,2 @@
+title: check-actions reads each workflow's permissions - read or nothing at its top, a write only in a job its list names, write-all nowhere
+type: added

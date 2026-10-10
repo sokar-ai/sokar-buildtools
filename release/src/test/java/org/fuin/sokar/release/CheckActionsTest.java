@@ -272,11 +272,77 @@ class CheckActionsTest {
 
     @Test
     void acceptsARunAfterAnotherOnItsOwnCodeAndTheWordInAnExpression() throws IOException {
-        workflow("on:\n  workflow_run:\n    workflows: [Build]\njobs:\n  a:\n"
+        workflow("on:\n  workflow_run:\n    workflows: [Build]\npermissions: {}\njobs:\n  a:\n"
                 + "    if: github.event_name != 'pull_request_target'\n    runs-on: ubuntu-latest\n    steps:\n"
                 + "      - uses: actions/checkout@" + COMMIT + " # v7.0.1\n");
 
         assertThat(check(directory)).as(stderr()).isEqualTo(0);
+    }
+
+    private static final String STEP = "    steps:\n      - uses: actions/checkout@" + COMMIT + " # v7.0.1\n";
+
+    private void named(String file, String text) throws IOException {
+        workflow("");
+        Files.writeString(directory.resolve("workflows/" + file), text);
+        Files.delete(directory.resolve("workflows/ci.yml"));
+    }
+
+    @Test
+    void refusesAWorkflowWithoutPermissionsAtItsTop() throws IOException {
+        // Without one, its token gets the repository's default, which may be write.
+        named("build.yml", "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n" + STEP);
+
+        assertThat(check(directory)).isEqualTo(Stop.REFUSED);
+        assertThat(stderr()).contains("workflows/build.yml").contains("no 'permissions:' at its top");
+    }
+
+    @Test
+    void refusesAWriteAtTheTopByName() throws IOException {
+        named("build.yml", "on: push\npermissions:\n  contents: write\njobs:\n  build:\n    runs-on: ubuntu-latest\n"
+                + STEP);
+
+        assertThat(check(directory)).isEqualTo(Stop.REFUSED);
+        assertThat(stderr()).contains("workflows/build.yml").contains("'contents: write' at its top")
+                .contains("only the jobs check-actions' list names may write").doesNotContain("Pin each step");
+    }
+
+    @Test
+    void refusesWriteAllWherever() throws IOException {
+        named("build.yml", "on: push\npermissions: read-all\njobs:\n  build:\n    permissions: write-all\n"
+                + "    runs-on: ubuntu-latest\n" + STEP);
+
+        assertThat(check(directory)).isEqualTo(Stop.REFUSED);
+        assertThat(stderr()).contains("job 'build'").contains("write-all");
+    }
+
+    @Test
+    void refusesAWriteInAJobTheListDoesNotName() throws IOException {
+        named("build.yml", "on: push\npermissions:\n  contents: read\njobs:\n  windows:\n    permissions:\n"
+                + "      id-token: write\n      contents: read\n    runs-on: windows-latest\n" + STEP);
+
+        assertThat(check(directory)).isEqualTo(Stop.REFUSED);
+        assertThat(stderr()).contains("workflows/build.yml").contains("job 'windows'").contains("'id-token: write'")
+                .contains("allows no write there");
+    }
+
+    @Test
+    void acceptsTheWritesTheListNamesInTheirJobs() throws IOException {
+        named("delete-runs.yml", "on: workflow_dispatch\npermissions: {}\njobs:\n  delete:\n    permissions:\n"
+                + "      actions: write\n    runs-on: ubuntu-latest\n" + STEP);
+        Files.writeString(directory.resolve("workflows/update.yml"), "on: workflow_dispatch\npermissions:\n"
+                + "  contents: read\njobs:\n  update:\n    permissions:\n      contents: write\n"
+                + "      pull-requests: write\n    runs-on: ubuntu-latest\n" + STEP);
+
+        assertThat(check(directory)).as(stderr()).isEqualTo(0);
+    }
+
+    @Test
+    void refusesAWriteTheListNamesForAnotherPermission() throws IOException {
+        named("delete-runs.yml", "on: workflow_dispatch\npermissions: {}\njobs:\n  delete:\n    permissions:\n"
+                + "      actions: write\n      contents: write\n    runs-on: ubuntu-latest\n" + STEP);
+
+        assertThat(check(directory)).isEqualTo(Stop.REFUSED);
+        assertThat(stderr()).contains("'contents: write'").contains("allows only actions there");
     }
 
     private void workflow(String text) throws IOException {

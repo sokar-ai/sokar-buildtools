@@ -14,7 +14,8 @@ workflow. A build that attests what it made needs `id-token: write` and `attesta
 
 ## The rule
 
-- A workflow's top-level `permissions:` is `read-all`, `{}`, or a map of `read` and `none` values only.
+- Every workflow has a top-level `permissions:`: without one, its token gets the repository's default, which may be
+  write. It is `read-all`, `{}`, or a map of `read` and `none` values only.
 - A job's `permissions:` may hold a `write` value only for a permission the list names for that job, by workflow file and
   job id - for example `id-token: write` and `attestations: write` for the job that attests a build, `contents: write`
   for the job that makes a release.
@@ -29,6 +30,14 @@ workflow. A build that attests what it made needs `id-token: write` and `attesta
 - The workflows of the repositories that run the check pass with the list as written, or the list grows by name in
   the same change, with the reason.
 - `doc/index.md` says how a repository names a job in the list.
+- The workflows that would be refused today move their writes into their one job, and the list names them there:
+  - the shared `delete-runs.yml`: `actions: write` into the job `delete`, changed once in `sokar` and copied alike
+    to every repository;
+  - each agent repository's `update.yml`: `contents: write` and `pull-requests: write` into the job `update`, each
+    repository its own.
+- A workflow without a top-level `permissions:` gets one, read-only or `{}`: in the agent repositories `build.yml`,
+  `shared-rules.yml` and `artifactory-smoke.yml`. Those of `sokar-frontend`, `sokar-message-matrix` and `sokar-intellij`
+  already set `contents: read`.
 
 ## To be checked
 

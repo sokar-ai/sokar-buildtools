@@ -36,7 +36,7 @@ workflow. A build that attests what it made needs `id-token: write` and `attesta
   - each agent repository's `update.yml`: `contents: write` and `pull-requests: write` into the job `update`, each
     repository its own.
 - A workflow without a top-level `permissions:` gets one, read-only or `{}`: in the agent repositories `build.yml`,
-  `shared-rules.yml` and `artifactory-smoke.yml`. Those of `sokar-frontend`, `sokar-message-matrix` and `sokar-intellij`
+  `shared-rules.yml` and `artifactory-smoke.yml`, and in `sokar-message-sluice` `build.yml` and `shared-rules.yml`. Those of `sokar-frontend`, `sokar-message-matrix` and `sokar-intellij`
   already set `contents: read`.
 
 ## To be checked

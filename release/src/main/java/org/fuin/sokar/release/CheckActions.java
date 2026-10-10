@@ -71,8 +71,8 @@ final class CheckActions {
             "update.yml/update", java.util.Set.of("contents", "pull-requests"),
             // Publishes the documentation site to GitHub Pages.
             "site.yml/publish", java.util.Set.of("pages", "id-token"),
-            // Attests that the interface's Windows ZIP was built here, by this workflow.
-            "windows.yml/zip", java.util.Set.of("id-token", "attestations"));
+            // The Build's Windows job attests that the interface's ZIP was built here, by this workflow.
+            "build.yml/windows", java.util.Set.of("id-token", "attestations"));
 
     /** A permission and its value, one per line of a map. */
     private static final Pattern GRANT = Pattern.compile("^\\s+([\\w-]+):\\s*(\\S+)\\s*$");

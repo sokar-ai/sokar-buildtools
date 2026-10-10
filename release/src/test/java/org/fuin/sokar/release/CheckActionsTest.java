@@ -317,11 +317,11 @@ class CheckActionsTest {
 
     @Test
     void refusesAWriteInAJobTheListDoesNotName() throws IOException {
-        named("build.yml", "on: push\npermissions:\n  contents: read\njobs:\n  windows:\n    permissions:\n"
-                + "      id-token: write\n      contents: read\n    runs-on: windows-latest\n" + STEP);
+        named("build.yml", "on: push\npermissions:\n  contents: read\njobs:\n  test:\n    permissions:\n"
+                + "      id-token: write\n      contents: read\n    runs-on: ubuntu-latest\n" + STEP);
 
         assertThat(check(directory)).isEqualTo(Stop.REFUSED);
-        assertThat(stderr()).contains("workflows/build.yml").contains("job 'windows'").contains("'id-token: write'")
+        assertThat(stderr()).contains("workflows/build.yml").contains("job 'test'").contains("'id-token: write'")
                 .contains("allows no write there");
     }
 
@@ -337,13 +337,13 @@ class CheckActionsTest {
     }
 
     @Test
-    void acceptsTheAttestationInTheWindowsZipJobOnly() throws IOException {
-        named("windows.yml", "on: push\npermissions:\n  contents: read\njobs:\n  zip:\n    permissions:\n"
+    void acceptsTheAttestationInTheBuildsWindowsJobOnly() throws IOException {
+        named("build.yml", "on: push\npermissions:\n  contents: read\njobs:\n  windows:\n    permissions:\n"
                 + "      contents: read\n      id-token: write\n      attestations: write\n    runs-on: windows-latest\n"
                 + STEP + "  test:\n    permissions:\n      id-token: write\n    runs-on: windows-latest\n" + STEP);
 
         assertThat(check(directory)).isEqualTo(Stop.REFUSED);
-        assertThat(stderr()).contains("job 'test'").doesNotContain("job 'zip'");
+        assertThat(stderr()).contains("job 'test'").doesNotContain("job 'windows'");
     }
 
     @Test

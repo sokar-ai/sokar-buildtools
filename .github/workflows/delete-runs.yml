@@ -13,13 +13,15 @@ on:
         type: boolean
         default: false
 
-# The only permission this needs, and it is the one that lets it delete.
-permissions:
-  actions: write
+# Nothing for the workflow as a whole: the one permission this needs is given to the one job that deletes.
+permissions: {}
 
 jobs:
   delete:
     name: Runs up to ${{ inputs.before }}
+    # The only permission this needs, and it is the one that lets it delete.
+    permissions:
+      actions: write
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

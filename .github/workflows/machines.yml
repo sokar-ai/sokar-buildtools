@@ -14,6 +14,10 @@ on:
 concurrency:
   group: ${{ github.workflow }}
 
+# Read for the workflow as a whole; a job that needs to write says so in its own block.
+permissions:
+  contents: read
+
 jobs:
 
   # One pull request for every pin that has a release at least three days old (the pom's
